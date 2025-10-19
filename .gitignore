@@ -18,6 +18,7 @@ go.work.sum
 # Build artifacts
 /cmd/browser/browser
 /browser
+/test
 
 # IDE
 .vscode/
