@@ -12,16 +12,16 @@ type NavigationCallback func(url string)
 
 // Browser represents the browser UI
 type Browser struct {
-	app              fyne.App
-	window           fyne.Window
-	contentBox       *widget.RichText
-	state            *BrowserState
-	urlEntry         *widget.Entry
-	backButton       *widget.Button
-	forwardButton    *widget.Button
-	refreshButton    *widget.Button
-	bookmarkButton   *widget.Button
-	onNavigate       NavigationCallback
+	app            fyne.App
+	window         fyne.Window
+	contentBox     *widget.RichText
+	state          *BrowserState
+	urlEntry       *widget.Entry
+	backButton     *widget.Button
+	forwardButton  *widget.Button
+	refreshButton  *widget.Button
+	bookmarkButton *widget.Button
+	onNavigate     NavigationCallback
 }
 
 // window interface to allow testing
@@ -36,22 +36,22 @@ type window interface {
 func NewBrowser() *Browser {
 	a := app.New()
 	w := a.NewWindow("Litebrowser")
-	
+
 	// Set window size
 	w.Resize(fyne.NewSize(1000, 700))
-	
+
 	contentBox := widget.NewRichTextFromMarkdown("Welcome to Litebrowser! Enter a URL above to start browsing.")
 	contentBox.Wrapping = fyne.TextWrapWord
-	
+
 	state := NewBrowserState()
-	
+
 	browser := &Browser{
 		app:        a,
 		window:     w,
 		contentBox: contentBox,
 		state:      state,
 	}
-	
+
 	return browser
 }
 
@@ -74,20 +74,20 @@ func (b *Browser) SetNavigationCallback(callback NavigationCallback) {
 func (b *Browser) Show() {
 	// Create navigation controls
 	b.createNavigationControls()
-	
+
 	// Create content area
 	scroll := container.NewScroll(b.contentBox)
-	
+
 	// Create navigation bar
-	navBar := container.NewBorder(nil, nil, 
+	navBar := container.NewBorder(nil, nil,
 		container.NewHBox(b.backButton, b.forwardButton, b.refreshButton),
 		container.NewHBox(b.bookmarkButton),
 		b.urlEntry,
 	)
-	
+
 	// Create main layout
 	content := container.NewBorder(navBar, nil, nil, nil, scroll)
-	
+
 	b.window.SetContent(content)
 	b.window.ShowAndRun()
 }
@@ -102,7 +102,7 @@ func (b *Browser) createNavigationControls() {
 			b.onNavigate(url)
 		}
 	}
-	
+
 	// Back button
 	b.backButton = widget.NewButton("←", func() {
 		if url, ok := b.state.GoBack(); ok {
@@ -112,7 +112,7 @@ func (b *Browser) createNavigationControls() {
 		}
 	})
 	b.backButton.Disable()
-	
+
 	// Forward button
 	b.forwardButton = widget.NewButton("→", func() {
 		if url, ok := b.state.GoForward(); ok {
@@ -122,7 +122,7 @@ func (b *Browser) createNavigationControls() {
 		}
 	})
 	b.forwardButton.Disable()
-	
+
 	// Refresh button
 	b.refreshButton = widget.NewButton("⟳", func() {
 		currentURL := b.state.GetCurrentURL()
@@ -130,7 +130,7 @@ func (b *Browser) createNavigationControls() {
 			b.onNavigate(currentURL)
 		}
 	})
-	
+
 	// Bookmark button
 	b.bookmarkButton = widget.NewButton("☆", func() {
 		b.toggleBookmark()
@@ -144,7 +144,7 @@ func (b *Browser) toggleBookmark() {
 	if currentURL == "" {
 		return
 	}
-	
+
 	if b.state.IsBookmarked(currentURL) {
 		b.state.RemoveBookmark(currentURL)
 		b.bookmarkButton.SetText("☆")
@@ -169,13 +169,13 @@ func (b *Browser) updateNavigationButtons() {
 	} else {
 		b.backButton.Disable()
 	}
-	
+
 	if b.state.CanGoForward() {
 		b.forwardButton.Enable()
 	} else {
 		b.forwardButton.Disable()
 	}
-	
+
 	currentURL := b.state.GetCurrentURL()
 	if currentURL != "" {
 		b.bookmarkButton.Enable()

@@ -28,13 +28,13 @@ func main() {
 // loadPage fetches and displays a web page
 func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsRuntime *js.Runtime, url string) {
 	log.Printf("Navigating to: %s", url)
-	
+
 	// Update browser state
 	browser.NavigateTo(url)
-	
+
 	// Show loading message
 	browser.SetContent("Loading...")
-	
+
 	// Fetch the page
 	html, err := fetcher.Fetch(url)
 	if err != nil {
@@ -59,7 +59,7 @@ func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsR
 			return
 		}
 	}
-	
+
 	// Parse body HTML to markdown
 	bodyHTML, err := parser.ParseBodyHTML(html)
 	if err != nil {
@@ -67,7 +67,7 @@ func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsR
 		browser.SetContent("Error parsing HTML: " + err.Error())
 		return
 	}
-	
+
 	log.Printf("Page loaded successfully")
 	browser.SetHTMLContent(bodyHTML)
 
