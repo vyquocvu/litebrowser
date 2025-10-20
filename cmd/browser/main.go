@@ -16,13 +16,32 @@ func main() {
 	jsRuntime := js.NewRuntime()
 	browser := ui.NewBrowser()
 
-	// Fetch example.com
-	log.Println("Fetching https://example.com...")
-	html, err := fetcher.Fetch("https://example.com")
+	// Set up navigation callback
+	browser.SetNavigationCallback(func(url string) {
+		loadPage(browser, fetcher, parser, jsRuntime, url)
+	})
+
+	// Show browser window
+	browser.Show()
+}
+
+// loadPage fetches and displays a web page
+func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsRuntime *js.Runtime, url string) {
+	log.Printf("Navigating to: %s", url)
+
+	// Update browser state
+	browser.NavigateTo(url)
+
+	// Show loading message
+	browser.SetContent("Loading...")
+
+	// Fetch the page
+	html, err := fetcher.Fetch(url)
 	if err != nil {
-		// Fallback to mock HTML if network is unavailable
-		log.Printf("Network unavailable (%v), using mock HTML", err)
-		html = `<!DOCTYPE html>
+		// Fallback to mock HTML for example.com if network is unavailable
+		log.Printf("Network error (%v), checking if example.com for mock HTML", err)
+		if url == "https://example.com" {
+			html = `<!DOCTYPE html>
 <html>
 <head>
     <title>Example Domain</title>
@@ -35,29 +54,30 @@ func main() {
     </div>
 </body>
 </html>`
+		} else {
+			browser.SetContent("Error loading page: " + err.Error())
+			return
+		}
 	}
-	
+
 	// Parse body HTML to markdown
 	bodyHTML, err := parser.ParseBodyHTML(html)
 	if err != nil {
 		log.Printf("Error parsing HTML: %v", err)
 		browser.SetContent("Error parsing HTML: " + err.Error())
-	} else {
-		log.Printf("Parsed body HTML: %s", bodyHTML)
-		browser.SetHTMLContent(bodyHTML)
+		return
 	}
+
+	log.Printf("Page loaded successfully")
+	browser.SetHTMLContent(bodyHTML)
 
 	// Set HTML content for JS runtime
 	jsRuntime.SetHTMLContent(html)
 
-	// Initialize JS runtime and run test script
-	testScript := `console.log("JS runtime initialized");`
-	log.Println("Running test JavaScript...")
+	// Run any JavaScript on the page (optional)
+	testScript := `console.log("Page loaded: " + document.title);`
 	_, err = jsRuntime.RunScript(testScript)
 	if err != nil {
 		log.Printf("Error running JavaScript: %v", err)
 	}
-
-	// Show browser window
-	browser.Show()
 }

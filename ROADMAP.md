@@ -2,26 +2,34 @@
 
 This document outlines the planned features and improvements for the litebrowser project. The roadmap is organized into phases based on priority and complexity.
 
-## Current Status (v0.1.0)
+## Current Status (v0.2.0)
 
 ✅ **Core Foundation**
 - HTTP fetching with Go's net/http
 - HTML parsing with golang.org/x/net/html
 - JavaScript execution with Goja engine
-- Basic GUI with Fyne framework
+- GUI with Fyne framework
 - `console.log()` support
 - `document.getElementById()` support
-- Window titled "Goja Browser"
+- Window titled "Litebrowser"
 - Body text rendering
+
+✅ **Navigation Features**
+- URL bar with entry field and autocomplete placeholder
+- Back/Forward navigation buttons with proper state management
+- Refresh/Reload button
+- Session-based navigation history with branching support
+- Bookmark management (add/remove/list with visual indicators)
+- Thread-safe state management for concurrent operations
 
 ## Phase 1: Essential Browser Features (v0.2.0)
 
 ### Navigation
-- [ ] URL bar for entering web addresses
-- [ ] Back/Forward navigation buttons
-- [ ] Refresh/Reload button
-- [ ] Navigation history
-- [ ] Bookmark management (add/remove/list)
+- [x] URL bar for entering web addresses
+- [x] Back/Forward navigation buttons
+- [x] Refresh/Reload button
+- [x] Navigation history
+- [x] Bookmark management (add/remove/list)
 
 ### UI Improvements
 - [ ] Status bar showing loading progress
