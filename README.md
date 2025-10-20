@@ -6,6 +6,12 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
 
 - **HTTP Fetching**: Fetch web pages using the built-in net/http package
 - **HTML Parsing**: Parse HTML and extract body text using golang.org/x/net/html
+- **HTML Rendering**: Canvas-based renderer with layout engine
+  - Render tree for optimized DOM representation
+  - Layout engine with box model calculations
+  - Support for core HTML elements (headings, paragraphs, lists, links, images)
+  - Text styling (bold, italic)
+  - HTML hierarchy preservation
 - **JavaScript Runtime**: Execute JavaScript with Goja engine
   - `console.log()` support
   - `document.getElementById()` support
@@ -26,6 +32,8 @@ litebrowser/
 ├── cmd/
 │   ├── browser/          # Main GUI browser application
 │   │   └── main.go
+│   ├── renderer-demo/    # Renderer demo (no GUI)
+│   │   └── main.go
 │   └── test/             # Test/demo program (no GUI required)
 │       └── main.go
 ├── internal/
@@ -33,6 +41,12 @@ litebrowser/
 │   │   └── fetcher.go
 │   ├── dom/              # HTML parsing
 │   │   └── parser.go
+│   ├── renderer/         # HTML canvas renderer
+│   │   ├── node.go       # Render tree nodes
+│   │   ├── layout.go     # Layout engine
+│   │   ├── canvas.go     # Canvas rendering
+│   │   ├── renderer.go   # Main renderer
+│   │   └── README.md     # Renderer documentation
 │   ├── js/               # JavaScript runtime (Goja)
 │   │   └── runtime.go
 │   └── ui/               # GUI rendering (Fyne)
@@ -125,8 +139,12 @@ The browser demonstrates web functionality by:
 
 1. **Navigation**: Enter URLs in the address bar to browse websites
 2. **Fetching**: Downloads web pages using HTTP GET
-3. **Parsing**: Extracts text from the `<body>` element and converts to markdown
-4. **Rendering**: Displays the content in a scrollable Fyne canvas
+3. **Parsing**: Parses HTML structure using golang.org/x/net/html
+4. **Rendering**: Canvas-based renderer that:
+   - Builds a render tree from HTML nodes
+   - Calculates layout with box model
+   - Renders to Fyne canvas with proper formatting
+   - Supports headings, paragraphs, lists, links, and images
 5. **History**: Navigate back and forward through visited pages
 6. **Bookmarks**: Save and manage favorite pages with visual indicators
 7. **JavaScript**: Runs JavaScript with Goja, supporting:
@@ -142,9 +160,11 @@ The browser demonstrates web functionality by:
 
 - **internal/net**: HTTP client for fetching web pages
 - **internal/dom**: HTML parser for extracting content
+- **internal/renderer**: Canvas-based HTML renderer with layout engine
 - **internal/js**: JavaScript runtime wrapper around Goja
 - **internal/ui**: Fyne-based GUI components
 - **cmd/browser**: Main browser application
+- **cmd/renderer-demo**: Renderer demonstration without GUI
 - **cmd/test**: Testing utility without GUI dependencies
 
 ### Adding Features

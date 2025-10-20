@@ -16,11 +16,17 @@
 │   Fetcher    │──▶│   Parser     │──▶│   Runtime    │
 │ (internal/   │   │ (internal/   │   │ (internal/   │
 │    net)      │   │    dom)      │   │    js)       │
-└──────────────┘   └──────────────┘   └──────────────┘
-        │                   │                   │
-        └───────────────────┼───────────────────┘
-                            │
-                            ▼
+└──────────────┘   └──────┬───────┘   └──────────────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │   HTML       │
+                   │  Renderer    │
+                   │ (internal/   │
+                   │  renderer)   │
+                   └──────┬───────┘
+                          │
+                          ▼
                    ┌──────────────┐
                    │  GUI Browser │
                    │ (internal/   │
@@ -77,18 +83,24 @@ User enters URL → Add to History → Fetch Page → Parse HTML → Render
 
 4. **HTML Parser** (`internal/dom/parser.go`)
    - Parses HTML using x/net/html
-   - Extracts body content and converts to markdown
+   - Extracts HTML structure for rendering
    - Provides getElementById functionality for JS
 
-5. **JavaScript Runtime** (`internal/js/runtime.go`)
+5. **HTML Renderer** (`internal/renderer/`)
+   - Builds render tree from parsed HTML
+   - Calculates layout with box model
+   - Renders to Fyne canvas objects
+   - Supports headings, paragraphs, lists, links, images
+
+6. **JavaScript Runtime** (`internal/js/runtime.go`)
    - Sets HTML content for DOM operations
    - Runs: `console.log("Page loaded: " + document.title)`
    - Output: "Page loaded: Example Domain"
 
-6. **GUI Browser** (`internal/ui/browser.go`)
+7. **GUI Browser** (`internal/ui/browser.go`)
    - Updates URL bar with current URL
    - Updates button states (back/forward/bookmark)
-   - Displays parsed content in scrollable canvas
+   - Displays rendered content in scrollable canvas
    - Shows bookmark indicator if page is bookmarked
 
 ## Window Layout (when GUI is available)
@@ -167,5 +179,6 @@ go test -v -cover ./internal/...
 ## Test Coverage
 
 - internal/net: 36.4%
-- internal/dom: 95.0%  
+- internal/dom: 95.0%
+- internal/renderer: 100% (34 tests)
 - internal/js: 92.9%

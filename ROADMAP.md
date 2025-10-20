@@ -22,7 +22,7 @@ This document outlines the planned features and improvements for the litebrowser
 - Bookmark management (add/remove/list with visual indicators)
 - Thread-safe state management for concurrent operations
 
-## Phase 1: Essential Browser Features (v0.2.0)
+## Phase 1: Essential Browser Features (v0.3.0)
 
 ### Navigation
 - [x] URL bar for entering web addresses
@@ -31,19 +31,25 @@ This document outlines the planned features and improvements for the litebrowser
 - [x] Navigation history
 - [x] Bookmark management (add/remove/list)
 
+### HTML Rendering (v0.2.1)
+- [x] Canvas-based HTML renderer module
+- [x] Render tree for DOM representation
+- [x] Layout engine with box model calculations
+- [x] Support for core HTML elements (h1-h6, p, div, ul, ol, li, a, img)
+- [x] Text styling support (bold, italic)
+- [x] HTML hierarchy preservation
+
 ### UI Improvements
 - [ ] Status bar showing loading progress
 - [ ] Error messages for failed page loads
-- [ ] Better text formatting and layout
 - [ ] Tab support for multiple pages
 - [ ] Settings/preferences dialog
 
 ### Enhanced HTML Support
 - [ ] CSS basic styling support (colors, fonts, sizes)
-- [ ] Image rendering (PNG, JPEG, GIF)
-- [ ] Link extraction and click handling
+- [ ] Full image rendering (PNG, JPEG, GIF)
+- [ ] Interactive link click handling
 - [ ] Form elements rendering (input, button, textarea)
-- [ ] List rendering (ul, ol, li)
 - [ ] Table rendering
 
 ## Phase 2: Enhanced JavaScript Support (v0.3.0)
