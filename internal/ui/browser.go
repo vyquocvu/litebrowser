@@ -5,6 +5,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	"github.com/vyquocvu/litebrowser/internal/renderer"
 )
 
 // NavigationCallback is a function that is called when navigation is requested
@@ -15,6 +16,7 @@ type Browser struct {
 	app            fyne.App
 	window         fyne.Window
 	contentBox     *widget.RichText
+	contentScroll  *container.Scroll
 	state          *BrowserState
 	urlEntry       *widget.Entry
 	backButton     *widget.Button
@@ -22,6 +24,7 @@ type Browser struct {
 	refreshButton  *widget.Button
 	bookmarkButton *widget.Button
 	onNavigate     NavigationCallback
+	htmlRenderer   *renderer.Renderer
 }
 
 // window interface to allow testing
@@ -45,11 +48,19 @@ func NewBrowser() *Browser {
 
 	state := NewBrowserState()
 
+	// Create HTML renderer with canvas size
+	htmlRenderer := renderer.NewRenderer(1000, 700)
+
+	// Create scroll container
+	contentScroll := container.NewScroll(contentBox)
+
 	browser := &Browser{
-		app:        a,
-		window:     w,
-		contentBox: contentBox,
-		state:      state,
+		app:           a,
+		window:        w,
+		contentBox:    contentBox,
+		contentScroll: contentScroll,
+		state:         state,
+		htmlRenderer:  htmlRenderer,
 	}
 
 	return browser
@@ -65,6 +76,20 @@ func (b *Browser) SetHTMLContent(content string) {
 	b.contentBox.ParseMarkdown(content)
 }
 
+// RenderHTMLContent renders HTML content using the canvas-based renderer
+func (b *Browser) RenderHTMLContent(htmlContent string) error {
+	canvasObject, err := b.htmlRenderer.RenderHTML(htmlContent)
+	if err != nil {
+		return err
+	}
+	
+	// Update the scroll container with the rendered content
+	b.contentScroll.Content = canvasObject
+	b.contentScroll.Refresh()
+	
+	return nil
+}
+
 // SetNavigationCallback sets the callback for when navigation is requested
 func (b *Browser) SetNavigationCallback(callback NavigationCallback) {
 	b.onNavigate = callback
@@ -75,9 +100,6 @@ func (b *Browser) Show() {
 	// Create navigation controls
 	b.createNavigationControls()
 
-	// Create content area
-	scroll := container.NewScroll(b.contentBox)
-
 	// Create navigation bar
 	navBar := container.NewBorder(nil, nil,
 		container.NewHBox(b.backButton, b.forwardButton, b.refreshButton),
@@ -86,7 +108,7 @@ func (b *Browser) Show() {
 	)
 
 	// Create main layout
-	content := container.NewBorder(navBar, nil, nil, nil, scroll)
+	content := container.NewBorder(navBar, nil, nil, nil, b.contentScroll)
 
 	b.window.SetContent(content)
 	b.window.ShowAndRun()
