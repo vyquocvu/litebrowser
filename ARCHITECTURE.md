@@ -55,23 +55,32 @@
 ## Window Layout (when GUI is available)
 
 ```
-┌─────────────────────────────────────────────────┐
-│ Goja Browser                              [_][□][X]│
-├─────────────────────────────────────────────────┤
-│                                                 │
-│  Example Domain                                 │
-│                                                 │
-│  This domain is for use in illustrative        │
-│  examples in documents. You may use this        │
-│  domain in literature without prior             │
-│  coordination or asking for permission.         │
-│                                                 │
-│  More information...                            │
-│                                                 │
-│                                                 │
-│                                                 │
-└─────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────┐
+│ Litebrowser                                   [_][□][X]│
+├───────────────────────────────────────────────────────┤
+│ ← → ⟳ │ https://example.com                    │ ☆   │
+├───────────────────────────────────────────────────────┤
+│                                                       │
+│  # Example Domain                                     │
+│                                                       │
+│  This domain is for use in illustrative              │
+│  examples in documents. You may use this              │
+│  domain in literature without prior                   │
+│  coordination or asking for permission.               │
+│                                                       │
+│  [More information...](https://example.org)           │
+│                                                       │
+│                                                       │
+│                                                       │
+└───────────────────────────────────────────────────────┘
 ```
+
+### Navigation Bar Components
+- **← (Back)**: Navigate to previous page in history
+- **→ (Forward)**: Navigate to next page in history  
+- **⟳ (Refresh)**: Reload current page
+- **URL Entry**: Enter web addresses, press Enter to navigate
+- **☆/★ (Bookmark)**: Toggle bookmark for current page
 
 ## Console Output
 
@@ -90,9 +99,14 @@ JS runtime initialized
 ✓ console.log() implementation
 ✓ document.getElementById() implementation
 ✓ GUI rendering with Fyne
-✓ Window titled "Goja Browser"
-✓ Body text extraction and display
+✓ Window titled "Litebrowser"
+✓ Body text extraction and markdown rendering
 ✓ JavaScript runtime initialization
+✓ URL bar with navigation
+✓ Back/Forward navigation with history management
+✓ Refresh/Reload functionality
+✓ Bookmark management with visual indicators
+✓ Thread-safe state management
 
 ## Testing
 

@@ -9,7 +9,13 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
 - **JavaScript Runtime**: Execute JavaScript with Goja engine
   - `console.log()` support
   - `document.getElementById()` support
-- **GUI**: Display rendered content in a Fyne window titled "Goja Browser"
+- **GUI**: Display rendered content in a Fyne window titled "Litebrowser"
+- **Navigation**: Full-featured navigation system
+  - URL bar for entering web addresses
+  - Back/Forward navigation buttons with proper state management
+  - Refresh/Reload button
+  - Session-based navigation history
+  - Bookmark management (add/remove with visual indicators)
 
 ## Architecture
 
@@ -91,12 +97,13 @@ go run ./cmd/browser
 ```
 
 This will:
-1. Open a window titled "Goja Browser"
-2. Fetch https://example.com
-3. Parse the `<body>` text content
-4. Render it in the canvas
-5. Initialize the Goja runtime with `console.log` and `document.getElementById`
-6. Run a test JS snippet logging "JS runtime initialized"
+1. Open a window titled "Litebrowser" with navigation controls
+2. Display a welcome message
+3. Allow you to enter a URL in the address bar
+4. Fetch and display web pages with full navigation support
+5. Enable back/forward navigation between pages
+6. Support bookmark management with visual indicators
+7. Initialize the Goja runtime with `console.log` and `document.getElementById`
 
 ### Testing Components (No GUI)
 
@@ -114,14 +121,17 @@ This validates:
 
 ## Example
 
-The browser demonstrates basic web functionality by:
+The browser demonstrates web functionality by:
 
-1. **Fetching**: Downloads https://example.com using HTTP GET
-2. **Parsing**: Extracts text from the `<body>` element
-3. **Rendering**: Displays the text in a scrollable Fyne canvas
-4. **JavaScript**: Runs JavaScript with Goja, supporting:
+1. **Navigation**: Enter URLs in the address bar to browse websites
+2. **Fetching**: Downloads web pages using HTTP GET
+3. **Parsing**: Extracts text from the `<body>` element and converts to markdown
+4. **Rendering**: Displays the content in a scrollable Fyne canvas
+5. **History**: Navigate back and forward through visited pages
+6. **Bookmarks**: Save and manage favorite pages with visual indicators
+7. **JavaScript**: Runs JavaScript with Goja, supporting:
    ```javascript
-   console.log("JS runtime initialized");
+   console.log("Page loaded: " + document.title);
    var elem = document.getElementById("main-content");
    console.log(elem.textContent);
    ```
