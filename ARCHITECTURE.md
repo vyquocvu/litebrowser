@@ -26,31 +26,70 @@
                    │ (internal/   │
                    │    ui)       │
                    │ [Fyne Window]│
+                   └──────┬───────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │ Browser State│
+                   │  - History   │
+                   │  - Bookmarks │
                    └──────────────┘
+```
+
+## Navigation State Flow
+
+```
+User enters URL → Add to History → Fetch Page → Parse HTML → Render
+       │               │
+       │               ├─→ Update URL bar
+       │               ├─→ Update back/forward buttons
+       │               └─→ Update bookmark indicator
+       │
+       ├─→ Back button → GoBack() → Fetch previous URL
+       ├─→ Forward button → GoForward() → Fetch next URL
+       ├─→ Refresh button → Reload current URL
+       └─→ Bookmark button → Toggle bookmark state
 ```
 
 ## Example Execution Flow
 
-1. **HTTP Fetcher** (`internal/net/fetcher.go`)
+### Initial Startup
+1. **GUI Browser** (`internal/ui/browser.go`)
+   - Creates Fyne window titled "Litebrowser"
+   - Initializes navigation controls (URL bar, buttons)
+   - Creates BrowserState for history/bookmarks
+   - Displays welcome message
+   - Waits for user input
+
+### Navigation Flow (User enters URL)
+1. **User Action**
+   - User enters "https://example.com" in URL bar
+   - Presses Enter or clicks navigation button
+
+2. **State Management** (`internal/ui/state.go`)
+   - Adds URL to navigation history
+   - Updates current index
+   - Enables/disables back/forward buttons appropriately
+
+3. **HTTP Fetcher** (`internal/net/fetcher.go`)
    - Fetches https://example.com
    - Returns HTML content
 
-2. **HTML Parser** (`internal/dom/parser.go`)
+4. **HTML Parser** (`internal/dom/parser.go`)
    - Parses HTML using x/net/html
-   - Extracts body text: "Example Domain This domain is for use..."
-   - Provides getElementById functionality
+   - Extracts body content and converts to markdown
+   - Provides getElementById functionality for JS
 
-3. **JavaScript Runtime** (`internal/js/runtime.go`)
-   - Initializes Goja VM
-   - Sets up console.log API
-   - Sets up document.getElementById API
-   - Runs: `console.log("JS runtime initialized")`
-   - Output: "JS runtime initialized"
+5. **JavaScript Runtime** (`internal/js/runtime.go`)
+   - Sets HTML content for DOM operations
+   - Runs: `console.log("Page loaded: " + document.title)`
+   - Output: "Page loaded: Example Domain"
 
-4. **GUI Browser** (`internal/ui/browser.go`)
-   - Creates Fyne window titled "Goja Browser"
-   - Displays parsed body text in scrollable canvas
-   - Renders the content
+6. **GUI Browser** (`internal/ui/browser.go`)
+   - Updates URL bar with current URL
+   - Updates button states (back/forward/bookmark)
+   - Displays parsed content in scrollable canvas
+   - Shows bookmark indicator if page is bookmarked
 
 ## Window Layout (when GUI is available)
 
