@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
@@ -8,17 +9,17 @@ import (
 
 // Browser represents the browser UI
 type Browser struct {
-	app        app.App
-	window     window
-	contentBox *widget.Label
+	app        fyne.App
+	window     fyne.Window
+	contentBox *widget.RichText
 }
 
 // window interface to allow testing
 type window interface {
 	SetTitle(string)
-	SetContent(content interface{})
+	SetContent(fyne.CanvasObject)
 	ShowAndRun()
-	Resize(size interface{})
+	Resize(fyne.Size)
 }
 
 // NewBrowser creates a new browser UI
@@ -26,8 +27,11 @@ func NewBrowser() *Browser {
 	a := app.New()
 	w := a.NewWindow("Goja Browser")
 	
-	contentBox := widget.NewLabel("Loading...")
-	contentBox.Wrapping = 1 // fyne.TextWrapWord
+	// Set window size
+	w.Resize(fyne.NewSize(800, 600))
+	
+	contentBox := widget.NewRichTextFromMarkdown("Loading...")
+	contentBox.Wrapping = fyne.TextWrapWord
 	
 	return &Browser{
 		app:        a,
@@ -36,9 +40,14 @@ func NewBrowser() *Browser {
 	}
 }
 
-// SetContent updates the displayed content
+// SetContent updates the displayed content (plain text)
 func (b *Browser) SetContent(content string) {
-	b.contentBox.SetText(content)
+	b.contentBox.ParseMarkdown(content)
+}
+
+// SetHTMLContent updates the displayed content from markdown-formatted HTML
+func (b *Browser) SetHTMLContent(content string) {
+	b.contentBox.ParseMarkdown(content)
 }
 
 // Show displays the browser window

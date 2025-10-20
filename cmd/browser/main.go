@@ -37,14 +37,14 @@ func main() {
 </html>`
 	}
 	
-	// Parse body text
-	bodyText, err := parser.ParseBodyText(html)
+	// Parse body HTML to markdown
+	bodyHTML, err := parser.ParseBodyHTML(html)
 	if err != nil {
 		log.Printf("Error parsing HTML: %v", err)
 		browser.SetContent("Error parsing HTML: " + err.Error())
 	} else {
-		log.Printf("Parsed body text: %s", bodyText)
-		browser.SetContent(bodyText)
+		log.Printf("Parsed body HTML: %s", bodyHTML)
+		browser.SetHTMLContent(bodyHTML)
 	}
 
 	// Set HTML content for JS runtime

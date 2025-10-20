@@ -99,3 +99,60 @@ func TestGetElementByID(t *testing.T) {
 		})
 	}
 }
+
+func TestParseBodyHTML(t *testing.T) {
+	parser := NewParser()
+	
+	tests := []struct {
+		name     string
+		html     string
+		wantContains []string
+		wantErr  bool
+	}{
+		{
+			name: "simple body with h1",
+			html: `<html><body><h1>Hello World</h1></body></html>`,
+			wantContains: []string{"# Hello World"},
+			wantErr: false,
+		},
+		{
+			name: "body with heading and paragraph",
+			html: `<html><body><h1>Title</h1><p>Paragraph text</p></body></html>`,
+			wantContains: []string{"# Title", "Paragraph text"},
+			wantErr: false,
+		},
+		{
+			name: "body with link",
+			html: `<html><body><p><a href="https://example.com">Link text</a></p></body></html>`,
+			wantContains: []string{"[Link text](https://example.com)"},
+			wantErr: false,
+		},
+		{
+			name: "body with bold and italic",
+			html: `<html><body><p><strong>Bold</strong> and <em>italic</em></p></body></html>`,
+			wantContains: []string{"**Bold**", "*italic*"},
+			wantErr: false,
+		},
+		{
+			name: "empty body",
+			html: `<html><body></body></html>`,
+			wantContains: []string{},
+			wantErr: false,
+		},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parser.ParseBodyHTML(tt.html)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("ParseBodyHTML() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			for _, want := range tt.wantContains {
+				if !strings.Contains(got, want) {
+					t.Errorf("ParseBodyHTML() = %q, want to contain %q", got, want)
+				}
+			}
+		})
+	}
+}
