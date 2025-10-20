@@ -191,17 +191,6 @@ We follow [Semantic Versioning](https://semver.org/):
 - **Minor version** (v0.2.0, v0.3.0): New features, backward compatible
 - **Patch version** (v0.1.1, v0.1.2): Bug fixes and minor improvements
 
-## Timeline
-
-This roadmap is a living document and timelines are estimates:
-
-- **Phase 1**: Q1-Q2 2025
-- **Phase 2**: Q2-Q3 2025
-- **Phase 3**: Q3-Q4 2025
-- **Phase 4**: Q4 2025 - Q1 2026
-- **Phase 5**: Q1-Q2 2026
-- **v2.0.0+**: 2026 and beyond
-
 ## Feedback
 
 Have suggestions for the roadmap? Please:
