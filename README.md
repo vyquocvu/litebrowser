@@ -154,6 +154,10 @@ To add new UI features, edit `internal/ui/browser.go`:
 // Add URL bar, navigation buttons, etc.
 ```
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and future development goals.
+
 ## License
 
 This project is provided as-is for educational purposes.
