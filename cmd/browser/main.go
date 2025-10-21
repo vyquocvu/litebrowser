@@ -60,16 +60,15 @@ func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsR
 		}
 	}
 
-	// Parse body HTML to markdown
-	bodyHTML, err := parser.ParseBodyHTML(html)
+	// Render HTML using the canvas-based renderer
+	err = browser.RenderHTMLContent(html)
 	if err != nil {
-		log.Printf("Error parsing HTML: %v", err)
-		browser.SetContent("Error parsing HTML: " + err.Error())
+		log.Printf("Error rendering HTML: %v", err)
+		browser.SetContent("Error rendering HTML: " + err.Error())
 		return
 	}
 
 	log.Printf("Page loaded successfully")
-	browser.SetHTMLContent(bodyHTML)
 
 	// Set HTML content for JS runtime
 	jsRuntime.SetHTMLContent(html)
