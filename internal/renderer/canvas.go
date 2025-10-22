@@ -469,6 +469,35 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		rect.SetMinSize(fyne.NewSize(100, 100))
 
 		*objects = append(*objects, container.NewVBox(rect, label))
+		
+	case PaintLink:
+		// Render clickable link
+		if cmd.LinkText == "" {
+			return
+		}
+		
+		// Resolve URL (absolute or relative)
+		resolvedURL := cr.resolveURL(cmd.LinkURL)
+		
+		// Create a clickable hyperlink widget
+		if cr.onNavigate != nil {
+			// Create a custom tappable widget
+			tappableLink := newTappableHyperlink(cmd.LinkText, resolvedURL, cr.onNavigate)
+			*objects = append(*objects, tappableLink)
+		} else {
+			// Fallback to default hyperlink behavior
+			parsedURL, err := url.Parse(resolvedURL)
+			if err == nil {
+				link := widget.NewHyperlink(cmd.LinkText, parsedURL)
+				link.Wrapping = fyne.TextWrapWord
+				*objects = append(*objects, link)
+			} else {
+				// If URL parsing fails, display as text
+				label := widget.NewLabel(cmd.LinkText)
+				label.Wrapping = fyne.TextWrapWord
+				*objects = append(*objects, label)
+			}
+		}
 	}
 }
 
