@@ -63,12 +63,15 @@ func (dl *DisplayList) Clear() {
 // DisplayListBuilder builds a display list from a layout tree and render tree
 type DisplayListBuilder struct {
 	defaultFontSize float32
+	fontMetrics     *FontMetrics
 }
 
 // NewDisplayListBuilder creates a new display list builder
 func NewDisplayListBuilder() *DisplayListBuilder {
+	defaultSize := float32(16.0)
 	return &DisplayListBuilder{
-		defaultFontSize: 16.0,
+		defaultFontSize: defaultSize,
+		fontMetrics:     NewFontMetrics(defaultSize),
 	}
 }
 
@@ -141,29 +144,13 @@ func (dlb *DisplayListBuilder) addTextCommand(layoutBox *LayoutBox, renderNode *
 		return
 	}
 	
-	// Determine font properties from parent
-	bold := false
-	italic := false
-	fontSize := dlb.defaultFontSize
+	// Get text style from node hierarchy
+	style := dlb.fontMetrics.GetTextStyleFromNode(renderNode)
 	
+	// Get font size from parent
+	fontSize := dlb.defaultFontSize
 	if renderNode.Parent != nil {
-		switch renderNode.Parent.TagName {
-		case "strong", "b":
-			bold = true
-		case "em", "i":
-			italic = true
-		case "h1":
-			bold = true
-			fontSize = dlb.defaultFontSize * 2.0
-		case "h2":
-			bold = true
-			fontSize = dlb.defaultFontSize * 1.5
-		case "h3":
-			bold = true
-			fontSize = dlb.defaultFontSize * 1.17
-		case "h4", "h5", "h6":
-			bold = true
-		}
+		fontSize = dlb.fontMetrics.GetFontSize(renderNode.Parent.TagName)
 	}
 	
 	cmd := &PaintCommand{
@@ -172,8 +159,8 @@ func (dlb *DisplayListBuilder) addTextCommand(layoutBox *LayoutBox, renderNode *
 		Box:      layoutBox.Box,
 		Text:     text,
 		FontSize: fontSize,
-		Bold:     bold,
-		Italic:   italic,
+		Bold:     style.Bold,
+		Italic:   style.Italic,
 	}
 	
 	displayList.AddCommand(cmd)
