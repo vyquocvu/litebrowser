@@ -9,6 +9,8 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
+	
+	imageloader "github.com/vyquocvu/litebrowser/internal/image"
 )
 
 // CanvasRenderer renders a render tree onto a Fyne canvas
@@ -34,6 +36,9 @@ type CanvasRenderer struct {
 	
 	// Current page URL for resolving relative links
 	baseURL string
+	
+	// Image loader for loading and caching images
+	imageLoader *imageloader.Loader
 }
 
 // NewCanvasRenderer creates a new canvas renderer
@@ -334,12 +339,78 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 	alt, hasAlt := node.GetAttribute("alt")
 	src, hasSrc := node.GetAttribute("src")
 
-	// For now, just display alt text or placeholder
-	// Full image loading would require fetching the image data
-	displayText := "[Image"
-	if hasSrc {
-		displayText += ": " + src
+	if !hasSrc || src == "" {
+		// No source - show alt text or placeholder
+		displayText := "[Image"
+		if hasAlt {
+			displayText += ": " + alt
+		}
+		displayText += "]"
+		label := widget.NewLabel(displayText)
+		label.Wrapping = fyne.TextWrapWord
+		*objects = append(*objects, label)
+		return
 	}
+
+	// Resolve relative URLs
+	resolvedSrc := cr.resolveURL(src)
+
+	// Try to load the image if loader is available
+	if cr.imageLoader != nil {
+		imageData, err := cr.imageLoader.Load(resolvedSrc)
+		
+		if err == nil && imageData != nil {
+			switch imageData.State {
+			case imageloader.StateLoaded:
+				// Image loaded successfully - render it
+				img := canvas.NewImageFromImage(imageData.Image)
+				img.FillMode = canvas.ImageFillOriginal
+				img.SetMinSize(fyne.NewSize(float32(imageData.Width), float32(imageData.Height)))
+				
+				// Add alt text below the image if available
+				if hasAlt && alt != "" {
+					altLabel := widget.NewLabel(alt)
+					altLabel.Wrapping = fyne.TextWrapWord
+					*objects = append(*objects, container.NewVBox(img, altLabel))
+				} else {
+					*objects = append(*objects, img)
+				}
+				return
+				
+			case imageloader.StateError:
+				// Image failed to load - show error with alt text
+				displayText := "[Image Load Failed"
+				if hasAlt {
+					displayText += ": " + alt
+				}
+				displayText += "]"
+				label := widget.NewLabel(displayText)
+				label.Wrapping = fyne.TextWrapWord
+				*objects = append(*objects, label)
+				return
+				
+			case imageloader.StateLoading:
+				// Image is loading - show loading placeholder
+				displayText := "[Loading Image"
+				if hasAlt {
+					displayText += ": " + alt
+				}
+				displayText += "]"
+				label := widget.NewLabel(displayText)
+				label.Wrapping = fyne.TextWrapWord
+				
+				// Show a gray rectangle as loading indicator
+				rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
+				rect.SetMinSize(fyne.NewSize(100, 100))
+				
+				*objects = append(*objects, container.NewVBox(rect, label))
+				return
+			}
+		}
+	}
+
+	// Fallback: Show placeholder if loader is not available or something went wrong
+	displayText := "[Image: " + src
 	if hasAlt {
 		displayText += " - " + alt
 	}
@@ -348,7 +419,6 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 	label := widget.NewLabel(displayText)
 	label.Wrapping = fyne.TextWrapWord
 
-	// Create a colored rectangle to represent the image placeholder
 	rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 	rect.SetMinSize(fyne.NewSize(100, 100))
 
@@ -457,7 +527,61 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		*objects = append(*objects, rect)
 
 	case PaintImage:
-		// Render image placeholder
+		// Try to load and render the actual image if loader is available
+		if cr.imageLoader != nil && cmd.ImageSrc != "" {
+			resolvedSrc := cr.resolveURL(cmd.ImageSrc)
+			imageData, err := cr.imageLoader.Load(resolvedSrc)
+			
+			if err == nil && imageData != nil {
+				switch imageData.State {
+				case imageloader.StateLoaded:
+					// Image loaded successfully - render it
+					img := canvas.NewImageFromImage(imageData.Image)
+					img.FillMode = canvas.ImageFillOriginal
+					img.SetMinSize(fyne.NewSize(float32(imageData.Width), float32(imageData.Height)))
+					
+					// Add alt text below the image if available
+					if cmd.ImageAlt != "" {
+						altLabel := widget.NewLabel(cmd.ImageAlt)
+						altLabel.Wrapping = fyne.TextWrapWord
+						*objects = append(*objects, container.NewVBox(img, altLabel))
+					} else {
+						*objects = append(*objects, img)
+					}
+					return
+					
+				case imageloader.StateError:
+					// Image failed to load - show error with alt text
+					displayText := "[Image Load Failed"
+					if cmd.ImageAlt != "" {
+						displayText += ": " + cmd.ImageAlt
+					}
+					displayText += "]"
+					label := widget.NewLabel(displayText)
+					label.Wrapping = fyne.TextWrapWord
+					*objects = append(*objects, label)
+					return
+					
+				case imageloader.StateLoading:
+					// Image is loading - show loading placeholder
+					displayText := "[Loading Image"
+					if cmd.ImageAlt != "" {
+						displayText += ": " + cmd.ImageAlt
+					}
+					displayText += "]"
+					label := widget.NewLabel(displayText)
+					label.Wrapping = fyne.TextWrapWord
+					
+					rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
+					rect.SetMinSize(fyne.NewSize(100, 100))
+					
+					*objects = append(*objects, container.NewVBox(rect, label))
+					return
+				}
+			}
+		}
+		
+		// Fallback: Render image placeholder
 		displayText := "[Image"
 		if cmd.ImageSrc != "" {
 			displayText += ": " + cmd.ImageSrc

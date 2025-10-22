@@ -10,6 +10,70 @@ The rendering pipeline consists of multiple stages:
 HTML Document → DOM Tree → Render Tree → Layout Tree → Display List → Paint
 ```
 
+## Image Loading Demo
+
+To see the image loading and caching system in action:
+
+```bash
+go run examples/image_loading_demo.go
+```
+
+This demonstrates:
+- Creating an image loader with configurable cache
+- Loading images from local file paths
+- Synchronous image loading
+- Cache hit/miss behavior
+- Error handling for missing images
+- LRU cache eviction when capacity is reached
+
+Example output:
+```
+Image Loading Demo
+==================
+
+Creating test image...
+Created test image at: /tmp/image-demo-2454801546/test.png
+
+Example 1: Creating Image Loader
+---------------------------------
+Created loader with cache capacity: 50
+
+Example 2: Loading Image Synchronously
+---------------------------------------
+Image loaded successfully!
+  Width: 100 pixels
+  Height: 100 pixels
+  Format: png
+  State: 1
+
+Example 3: Cache Status
+-----------------------
+Cache size: 1
+Image is cached: 100x100 png
+
+Example 4: Loading from Cache
+------------------------------
+Image loaded from cache!
+Cache still has 1 item(s)
+
+Example 5: Handling Missing Images
+-----------------------------------
+Expected error: failed to open image file: open /nonexistent/image.png: no such file or directory
+Image state correctly set to Error
+
+Example 6: Cache Eviction Demo
+-------------------------------
+Loaded image 1, cache size: 1
+Loaded image 2, cache size: 2
+Loaded image 3, cache size: 2
+
+Final cache size (should be 2 due to eviction): 2
+
+✓ Image loading demo complete!
+```
+
+See [IMAGE_LOADING_IMPLEMENTATION.md](../IMAGE_LOADING_IMPLEMENTATION.md) for detailed documentation.
+
 ## Scroll Performance Demo
 
 To see the viewport-based rendering optimizations in action:
