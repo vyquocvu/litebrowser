@@ -317,22 +317,9 @@ func (le *LayoutEngine) layoutElementNode(node *RenderNode, x, y, availableWidth
 	return childY
 }
 
-// getFontSize returns the font size for an element
+// getFontSize returns the font size for an element (delegates to fontMetrics)
 func (le *LayoutEngine) getFontSize(tagName string) float32 {
-	fontSizes := map[string]float32{
-		"h1": le.defaultFontSize * 2.0,
-		"h2": le.defaultFontSize * 1.5,
-		"h3": le.defaultFontSize * 1.17,
-		"h4": le.defaultFontSize * 1.0,
-		"h5": le.defaultFontSize * 0.83,
-		"h6": le.defaultFontSize * 0.67,
-		"p":  le.defaultFontSize,
-	}
-	
-	if size, ok := fontSizes[tagName]; ok {
-		return size
-	}
-	return le.defaultFontSize
+	return le.fontMetrics.GetFontSize(tagName)
 }
 
 // getVerticalSpacing returns the vertical spacing (margin) for an element

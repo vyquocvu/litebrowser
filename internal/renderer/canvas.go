@@ -24,16 +24,21 @@ type CanvasRenderer struct {
 	cachedDisplayList *DisplayList
 	cachedLayoutRoot  *LayoutBox
 	cachedRenderRoot  *RenderNode
+	
+	// fontMetrics provides accurate text measurement
+	fontMetrics *FontMetrics
 }
 
 // NewCanvasRenderer creates a new canvas renderer
 func NewCanvasRenderer(width, height float32) *CanvasRenderer {
+	defaultSize := float32(16.0)
 	return &CanvasRenderer{
 		canvasWidth:    width,
 		canvasHeight:   height,
-		defaultSize:    16.0,
+		defaultSize:    defaultSize,
 		viewportY:      0,
 		viewportHeight: height,
+		fontMetrics:    NewFontMetrics(defaultSize),
 	}
 }
 
@@ -94,7 +99,7 @@ func (cr *CanvasRenderer) renderTextNode(node *RenderNode, objects *[]fyne.Canva
 
 	// Get text style from parent if available
 	if node.Parent != nil {
-		textWidget.TextStyle = cr.getTextStyle(node.Parent.TagName)
+		textWidget.TextStyle = cr.fontMetrics.GetTextStyle(node.Parent.TagName)
 	}
 
 	*objects = append(*objects, textWidget)
@@ -273,36 +278,14 @@ func (cr *CanvasRenderer) extractTextRecursive(node *RenderNode, builder *string
 	}
 }
 
-// getFontSize returns font size for an element type
+// getFontSize returns font size for an element type (delegates to fontMetrics)
 func (cr *CanvasRenderer) getFontSize(tagName string) float32 {
-	fontSizes := map[string]float32{
-		"h1": cr.defaultSize * 2.0,
-		"h2": cr.defaultSize * 1.5,
-		"h3": cr.defaultSize * 1.17,
-		"h4": cr.defaultSize * 1.0,
-		"h5": cr.defaultSize * 0.83,
-		"h6": cr.defaultSize * 0.67,
-		"p":  cr.defaultSize,
-	}
-
-	if size, ok := fontSizes[tagName]; ok {
-		return size
-	}
-	return cr.defaultSize
+	return cr.fontMetrics.GetFontSize(tagName)
 }
 
-// getTextStyle returns text style for an element type
+// getTextStyle returns text style for an element type (delegates to fontMetrics)
 func (cr *CanvasRenderer) getTextStyle(tagName string) fyne.TextStyle {
-	switch tagName {
-	case "h1", "h2", "h3", "h4", "h5", "h6":
-		return fyne.TextStyle{Bold: true}
-	case "strong", "b":
-		return fyne.TextStyle{Bold: true}
-	case "em", "i":
-		return fyne.TextStyle{Italic: true}
-	default:
-		return fyne.TextStyle{}
-	}
+	return cr.fontMetrics.GetTextStyle(tagName)
 }
 
 // RenderWithViewport renders the render tree with viewport culling for better performance
