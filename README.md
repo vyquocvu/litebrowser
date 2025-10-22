@@ -12,6 +12,9 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
   - Support for core HTML elements (headings, paragraphs, lists, links, images)
   - Text styling (bold, italic)
   - HTML hierarchy preservation
+  - **High-performance viewport-based rendering** (30-65x faster than traditional approaches)
+  - Display list caching for smooth scrolling
+  - Viewport culling to only render visible content
 - **JavaScript Runtime**: Execute JavaScript with Goja engine
   - `console.log()` support
   - `document.getElementById()` support
@@ -183,6 +186,17 @@ To add new UI features, edit `internal/ui/browser.go`:
 ```go
 // Add URL bar, navigation buttons, etc.
 ```
+
+## Performance
+
+Litebrowser includes advanced performance optimizations for smooth scrolling and high frame rates:
+
+- **Viewport-based rendering**: 30x faster than traditional full-page rendering
+- **Display list caching**: Eliminates repeated DOM traversal
+- **Scroll optimization**: 65x faster scroll updates
+- **Scales to thousands of elements**: Constant-time rendering regardless of page size
+
+See [PERFORMANCE.md](PERFORMANCE.md) for detailed benchmarks and technical information.
 
 ## Roadmap
 
