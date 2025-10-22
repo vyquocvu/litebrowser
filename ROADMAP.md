@@ -35,6 +35,11 @@ This document outlines the planned features and improvements for the litebrowser
 - [x] Canvas-based HTML renderer module
 - [x] Render tree for DOM representation
 - [x] Layout engine with box model calculations
+- [x] **True inline layout engine with line boxes (Issue #8)**
+- [x] **Proper text wrapping and line breaking**
+- [x] **White space handling (normal, nowrap, pre, pre-wrap, pre-line)**
+- [x] **Vertical alignment for inline elements**
+- [x] **Inline-block element support**
 - [x] Support for core HTML elements (h1-h6, p, div, ul, ol, li, a, img)
 - [x] Text styling support (bold, italic)
 - [x] HTML hierarchy preservation

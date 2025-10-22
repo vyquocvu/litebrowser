@@ -36,13 +36,18 @@ The layout engine calculates the position and size of each element in the render
   - Configurable canvas dimensions
   - Default font sizes and line heights
   - Vertical spacing for elements
+  - **InlineLayoutEngine**: Dedicated inline layout handling
 
 #### Layout Algorithm:
 
 1. **Top-Down Traversal**: Starts from the root and processes children
 2. **Block Layout**: Block elements stack vertically
-3. **Inline Layout**: Inline elements flow horizontally (simplified)
-4. **Text Layout**: Approximates text dimensions based on character count
+3. **Inline Layout**: True inline layout with line boxes (see `inline_layout.go`)
+   - Proper word wrapping and line breaking
+   - White space handling (all CSS modes)
+   - Vertical alignment support
+   - Character-level breaking for long words
+4. **Text Layout**: Accurate text measurement using font metrics
 5. **Spacing**: Applies element-specific vertical spacing
 
 #### Supported Layout Rules:
@@ -51,6 +56,11 @@ The layout engine calculates the position and size of each element in the render
 - Paragraph spacing
 - List spacing
 - Block vs. inline element flow
+- **Line box model for inline content**
+- **All CSS white-space modes**
+- **All CSS vertical-align modes**
+
+For detailed information about inline layout, see [INLINE_LAYOUT_IMPLEMENTATION.md](../../INLINE_LAYOUT_IMPLEMENTATION.md).
 
 ### 3. Canvas Renderer (`canvas.go`)
 
@@ -221,8 +231,8 @@ go test -cover ./internal/renderer/...
 
 ### Phase 1: Improved Rendering
 
-- [ ] Accurate text measurement using font metrics
-- [ ] True inline layout for inline elements
+- [x] Accurate text measurement using font metrics (completed)
+- [x] True inline layout for inline elements (completed)
 - [ ] Image loading and caching
 - [ ] Clickable links with navigation integration
 
