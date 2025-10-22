@@ -222,3 +222,73 @@ func countNodes(node *RenderNode) int {
 	
 	return count
 }
+
+// BenchmarkViewportRendering benchmarks viewport-based rendering performance
+func BenchmarkViewportRenderingSmall(b *testing.B) {
+	benchmarkViewportRendering(b, 10)
+}
+
+func BenchmarkViewportRenderingMedium(b *testing.B) {
+	benchmarkViewportRendering(b, 100)
+}
+
+func BenchmarkViewportRenderingLarge(b *testing.B) {
+	benchmarkViewportRendering(b, 1000)
+}
+
+func BenchmarkViewportRenderingVeryLarge(b *testing.B) {
+	benchmarkViewportRendering(b, 5000)
+}
+
+// benchmarkViewportRendering benchmarks viewport-based rendering
+func benchmarkViewportRendering(b *testing.B, n int) {
+	// Create a tree structure with n nodes
+	root := createBenchmarkTree(n)
+	
+	// Create layout tree
+	le := NewLayoutEngine(800, 600)
+	layoutRoot := le.ComputeLayout(root)
+	
+	// Create canvas renderer with viewport
+	cr := NewCanvasRenderer(800, 600)
+	cr.SetViewport(0, 600)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		cr.RenderWithViewport(root, layoutRoot)
+	}
+}
+
+// BenchmarkViewportScroll benchmarks viewport updates during scrolling
+func BenchmarkViewportScrollSmall(b *testing.B) {
+	benchmarkViewportScroll(b, 10)
+}
+
+func BenchmarkViewportScrollMedium(b *testing.B) {
+	benchmarkViewportScroll(b, 100)
+}
+
+func BenchmarkViewportScrollLarge(b *testing.B) {
+	benchmarkViewportScroll(b, 1000)
+}
+
+// benchmarkViewportScroll simulates scrolling with viewport updates
+func benchmarkViewportScroll(b *testing.B, n int) {
+	// Create a tree structure with n nodes
+	root := createBenchmarkTree(n)
+	
+	// Create layout tree
+	le := NewLayoutEngine(800, 600)
+	layoutRoot := le.ComputeLayout(root)
+	
+	// Create canvas renderer
+	cr := NewCanvasRenderer(800, 600)
+	
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Simulate scrolling by updating viewport
+		scrollPos := float32(i % 1000)
+		cr.SetViewport(scrollPos, 600)
+		cr.RenderWithViewport(root, layoutRoot)
+	}
+}

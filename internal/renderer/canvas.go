@@ -3,7 +3,7 @@ package renderer
 import (
 	"image/color"
 	"strings"
-	
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
@@ -15,15 +15,45 @@ type CanvasRenderer struct {
 	canvasWidth  float32
 	canvasHeight float32
 	defaultSize  float32
+
+	// Viewport for optimized rendering
+	viewportY      float32
+	viewportHeight float32
+
+	// Cached display list for performance
+	cachedDisplayList *DisplayList
+	cachedLayoutRoot  *LayoutBox
+	cachedRenderRoot  *RenderNode
 }
 
 // NewCanvasRenderer creates a new canvas renderer
 func NewCanvasRenderer(width, height float32) *CanvasRenderer {
 	return &CanvasRenderer{
-		canvasWidth:  width,
-		canvasHeight: height,
-		defaultSize:  16.0,
+		canvasWidth:    width,
+		canvasHeight:   height,
+		defaultSize:    16.0,
+		viewportY:      0,
+		viewportHeight: height,
 	}
+}
+
+// SetViewport sets the current viewport for optimized rendering
+func (cr *CanvasRenderer) SetViewport(y, height float32) {
+	cr.viewportY = y
+	cr.viewportHeight = height
+}
+
+// isInViewport checks if a box intersects with the current viewport
+func (cr *CanvasRenderer) isInViewport(box Rect) bool {
+	// Add buffer zone above and below viewport for smoother scrolling
+	bufferZone := cr.viewportHeight * 0.5
+	viewportTop := cr.viewportY - bufferZone
+	viewportBottom := cr.viewportY + cr.viewportHeight + bufferZone
+
+	boxBottom := box.Y + box.Height
+
+	// Check if box intersects with viewport
+	return boxBottom >= viewportTop && box.Y <= viewportBottom
 }
 
 // Render renders the render tree and returns a Fyne container
@@ -31,10 +61,10 @@ func (cr *CanvasRenderer) Render(root *RenderNode) fyne.CanvasObject {
 	if root == nil {
 		return container.NewVBox()
 	}
-	
+
 	objects := make([]fyne.CanvasObject, 0)
 	cr.renderNode(root, &objects)
-	
+
 	return container.NewVBox(objects...)
 }
 
@@ -43,7 +73,7 @@ func (cr *CanvasRenderer) renderNode(node *RenderNode, objects *[]fyne.CanvasObj
 	if node == nil {
 		return
 	}
-	
+
 	if node.Type == NodeTypeText {
 		cr.renderTextNode(node, objects)
 	} else if node.Type == NodeTypeElement {
@@ -57,16 +87,16 @@ func (cr *CanvasRenderer) renderTextNode(node *RenderNode, objects *[]fyne.Canva
 	if text == "" {
 		return
 	}
-	
+
 	// Create text widget
 	textWidget := widget.NewLabel(text)
 	textWidget.Wrapping = fyne.TextWrapWord
-	
+
 	// Get text style from parent if available
 	if node.Parent != nil {
 		textWidget.TextStyle = cr.getTextStyle(node.Parent.TagName)
 	}
-	
+
 	*objects = append(*objects, textWidget)
 }
 
@@ -109,15 +139,15 @@ func (cr *CanvasRenderer) renderHeading(node *RenderNode, objects *[]fyne.Canvas
 	if text == "" {
 		return
 	}
-	
+
 	label := widget.NewLabel(text)
 	label.Wrapping = fyne.TextWrapWord
 	label.TextStyle = fyne.TextStyle{Bold: true}
-	
+
 	// Different sizes for different heading levels
 	// Note: Fyne doesn't support arbitrary font sizes directly,
 	// so we use TextStyle to make headings bold
-	
+
 	*objects = append(*objects, label)
 }
 
@@ -127,10 +157,10 @@ func (cr *CanvasRenderer) renderParagraph(node *RenderNode, objects *[]fyne.Canv
 	if text == "" {
 		return
 	}
-	
+
 	label := widget.NewLabel(text)
 	label.Wrapping = fyne.TextWrapWord
-	
+
 	*objects = append(*objects, label)
 }
 
@@ -146,15 +176,15 @@ func (cr *CanvasRenderer) renderDiv(node *RenderNode, objects *[]fyne.CanvasObje
 func (cr *CanvasRenderer) renderLink(node *RenderNode, objects *[]fyne.CanvasObject) {
 	text := cr.extractText(node)
 	href, hasHref := node.GetAttribute("href")
-	
+
 	if text == "" {
 		return
 	}
-	
+
 	if hasHref && href != "" {
 		// Create a hyperlink widget
 		link := widget.NewHyperlink(text, nil)
-		// Note: Fyne's hyperlink requires a proper URL parse, 
+		// Note: Fyne's hyperlink requires a proper URL parse,
 		// but for now we'll just display as styled text
 		*objects = append(*objects, link)
 	} else {
@@ -181,11 +211,11 @@ func (cr *CanvasRenderer) renderListItem(node *RenderNode, objects *[]fyne.Canva
 	if text == "" {
 		return
 	}
-	
+
 	// Add bullet point
 	label := widget.NewLabel("• " + text)
 	label.Wrapping = fyne.TextWrapWord
-	
+
 	*objects = append(*objects, label)
 }
 
@@ -193,7 +223,7 @@ func (cr *CanvasRenderer) renderListItem(node *RenderNode, objects *[]fyne.Canva
 func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasObject) {
 	alt, hasAlt := node.GetAttribute("alt")
 	src, hasSrc := node.GetAttribute("src")
-	
+
 	// For now, just display alt text or placeholder
 	// Full image loading would require fetching the image data
 	displayText := "[Image"
@@ -204,14 +234,14 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 		displayText += " - " + alt
 	}
 	displayText += "]"
-	
+
 	label := widget.NewLabel(displayText)
 	label.Wrapping = fyne.TextWrapWord
-	
+
 	// Create a colored rectangle to represent the image placeholder
 	rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 	rect.SetMinSize(fyne.NewSize(100, 100))
-	
+
 	*objects = append(*objects, container.NewVBox(rect, label))
 }
 
@@ -227,7 +257,7 @@ func (cr *CanvasRenderer) extractTextRecursive(node *RenderNode, builder *string
 	if node == nil {
 		return
 	}
-	
+
 	if node.Type == NodeTypeText {
 		text := strings.TrimSpace(node.Text)
 		if text != "" {
@@ -237,7 +267,7 @@ func (cr *CanvasRenderer) extractTextRecursive(node *RenderNode, builder *string
 			builder.WriteString(text)
 		}
 	}
-	
+
 	for _, child := range node.Children {
 		cr.extractTextRecursive(child, builder)
 	}
@@ -254,7 +284,7 @@ func (cr *CanvasRenderer) getFontSize(tagName string) float32 {
 		"h6": cr.defaultSize * 0.67,
 		"p":  cr.defaultSize,
 	}
-	
+
 	if size, ok := fontSizes[tagName]; ok {
 		return size
 	}
@@ -273,4 +303,95 @@ func (cr *CanvasRenderer) getTextStyle(tagName string) fyne.TextStyle {
 	default:
 		return fyne.TextStyle{}
 	}
+}
+
+// RenderWithViewport renders the render tree with viewport culling for better performance
+func (cr *CanvasRenderer) RenderWithViewport(root *RenderNode, layoutRoot *LayoutBox) fyne.CanvasObject {
+	if root == nil || layoutRoot == nil {
+		return container.NewVBox()
+	}
+
+	// Build or reuse display list
+	var displayList *DisplayList
+	if cr.cachedDisplayList != nil && cr.cachedRenderRoot == root && cr.cachedLayoutRoot == layoutRoot {
+		// Reuse cached display list
+		displayList = cr.cachedDisplayList
+	} else {
+		// Build new display list
+		dlb := NewDisplayListBuilder()
+		displayList = dlb.Build(layoutRoot, root)
+
+		// Cache for next time
+		cr.cachedDisplayList = displayList
+		cr.cachedRenderRoot = root
+		cr.cachedLayoutRoot = layoutRoot
+	}
+
+	// Filter commands based on viewport
+	objects := make([]fyne.CanvasObject, 0)
+	for _, cmd := range displayList.Commands {
+		if cr.isInViewport(cmd.Box) {
+			cr.renderCommand(cmd, &objects)
+		}
+	}
+
+	if len(objects) == 0 {
+		return container.NewVBox()
+	}
+
+	return container.NewVBox(objects...)
+}
+
+// renderCommand renders a single paint command to canvas objects
+func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.CanvasObject) {
+	switch cmd.Type {
+	case PaintText:
+		if strings.TrimSpace(cmd.Text) == "" {
+			return
+		}
+
+		label := widget.NewLabel(cmd.Text)
+		label.Wrapping = fyne.TextWrapWord
+
+		if cmd.Bold && cmd.Italic {
+			label.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+		} else if cmd.Bold {
+			label.TextStyle = fyne.TextStyle{Bold: true}
+		} else if cmd.Italic {
+			label.TextStyle = fyne.TextStyle{Italic: true}
+		}
+
+		*objects = append(*objects, label)
+
+	case PaintRect:
+		rect := canvas.NewRectangle(cmd.FillColor)
+		rect.SetMinSize(fyne.NewSize(cmd.Box.Width, cmd.Box.Height))
+		*objects = append(*objects, rect)
+
+	case PaintImage:
+		// Render image placeholder
+		displayText := "[Image"
+		if cmd.ImageSrc != "" {
+			displayText += ": " + cmd.ImageSrc
+		}
+		if cmd.ImageAlt != "" {
+			displayText += " - " + cmd.ImageAlt
+		}
+		displayText += "]"
+
+		label := widget.NewLabel(displayText)
+		label.Wrapping = fyne.TextWrapWord
+
+		rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
+		rect.SetMinSize(fyne.NewSize(100, 100))
+
+		*objects = append(*objects, container.NewVBox(rect, label))
+	}
+}
+
+// ClearCache clears the cached display list to force re-rendering
+func (cr *CanvasRenderer) ClearCache() {
+	cr.cachedDisplayList = nil
+	cr.cachedLayoutRoot = nil
+	cr.cachedRenderRoot = nil
 }

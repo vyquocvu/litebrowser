@@ -82,11 +82,19 @@ func (b *Browser) RenderHTMLContent(htmlContent string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	// Update the scroll container with the rendered content
 	b.contentScroll.Content = canvasObject
+
+	// Get content height and update viewport
+	contentHeight := b.htmlRenderer.GetContentHeight()
+	if contentHeight > 0 {
+		// Initialize viewport to full height
+		b.htmlRenderer.SetViewport(0, b.contentScroll.Size().Height)
+	}
+
 	b.contentScroll.Refresh()
-	
+
 	return nil
 }
 
