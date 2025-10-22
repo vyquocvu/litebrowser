@@ -8,6 +8,9 @@ import (
 	"golang.org/x/net/html"
 )
 
+// NavigationCallback is called when a link is clicked
+type NavigationCallback func(url string)
+
 // Renderer is the main HTML renderer that coordinates parsing, layout, and rendering
 type Renderer struct {
 	layoutEngine   *LayoutEngine
@@ -16,6 +19,12 @@ type Renderer struct {
 	// Cached trees for performance
 	currentRenderTree *RenderNode
 	currentLayoutTree *LayoutBox
+	
+	// Navigation callback for link clicks
+	onNavigate NavigationCallback
+	
+	// Current page URL for resolving relative links
+	currentURL string
 }
 
 // NewRenderer creates a new HTML renderer
@@ -54,6 +63,9 @@ func (r *Renderer) RenderHTML(htmlContent string) (fyne.CanvasObject, error) {
 	// Cache trees for viewport updates
 	r.currentRenderTree = renderTree
 	r.currentLayoutTree = layoutTree
+
+	// Pass navigation callback to canvas renderer
+	r.canvasRenderer.SetNavigationCallback(r.onNavigate, r.currentURL)
 
 	// Render to canvas with viewport optimization
 	canvasObject := r.canvasRenderer.RenderWithViewport(renderTree, layoutTree)
@@ -112,4 +124,14 @@ func (r *Renderer) SetSize(width, height float32) {
 	r.layoutEngine.canvasHeight = height
 	r.canvasRenderer.canvasWidth = width
 	r.canvasRenderer.canvasHeight = height
+}
+
+// SetNavigationCallback sets the callback for link clicks
+func (r *Renderer) SetNavigationCallback(callback NavigationCallback) {
+	r.onNavigate = callback
+}
+
+// SetCurrentURL sets the current page URL for resolving relative links
+func (r *Renderer) SetCurrentURL(url string) {
+	r.currentURL = url
 }
