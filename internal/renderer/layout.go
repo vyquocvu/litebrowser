@@ -18,18 +18,23 @@ type LayoutEngine struct {
 	
 	// fontMetrics provides accurate text measurement
 	fontMetrics *FontMetrics
+	
+	// inlineLayoutEngine handles inline layout
+	inlineLayoutEngine *InlineLayoutEngine
 }
 
 // NewLayoutEngine creates a new layout engine
 func NewLayoutEngine(width, height float32) *LayoutEngine {
 	defaultSize := float32(16.0)
+	fontMetrics := NewFontMetrics(defaultSize)
 	return &LayoutEngine{
-		canvasWidth:     width,
-		canvasHeight:    height,
-		defaultFontSize: defaultSize,
-		lineHeight:      1.5,
-		nodeMap:         make(map[int64]*LayoutBox),
-		fontMetrics:     NewFontMetrics(defaultSize),
+		canvasWidth:        width,
+		canvasHeight:       height,
+		defaultFontSize:    defaultSize,
+		lineHeight:         1.5,
+		nodeMap:            make(map[int64]*LayoutBox),
+		fontMetrics:        fontMetrics,
+		inlineLayoutEngine: NewInlineLayoutEngine(fontMetrics, defaultSize),
 	}
 }
 
@@ -139,8 +144,36 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 	// Layout children
 	childY := currentY
 	
-	if node.IsBlock() {
-		// Block elements: stack children vertically
+	// Check if this block element contains inline content
+	// Block elements like p, div can contain inline content
+	if node.IsBlock() && le.hasInlineContent(node) {
+		// Use inline layout for the children
+		lines, totalHeight := le.inlineLayoutEngine.LayoutInlineContent(
+			node, x, currentY, availableWidth, WhiteSpaceNormal,
+		)
+		
+		// Store line boxes in the layout box
+		layoutBox.LineBoxes = lines
+		
+		// Create layout boxes for each inline box in the lines
+		for _, line := range lines {
+			for _, inlineBox := range line.InlineBoxes {
+				childLayoutBox := NewLayoutBox(inlineBox.NodeID)
+				childLayoutBox.Display = DisplayInline
+				childLayoutBox.Box = Rect{
+					X:      line.X + inlineBox.X,
+					Y:      line.Y + inlineBox.Y,
+					Width:  inlineBox.Width,
+					Height: inlineBox.Height,
+				}
+				layoutBox.AddChild(childLayoutBox)
+				le.nodeMap[inlineBox.NodeID] = childLayoutBox
+			}
+		}
+		
+		childY = currentY + totalHeight
+	} else if node.IsBlock() {
+		// Block elements: stack children vertically (when no inline content)
 		for _, child := range node.Children {
 			childLayoutBox := le.buildLayoutBox(child, x, childY, availableWidth)
 			if childLayoutBox != nil {
@@ -149,17 +182,36 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 			}
 		}
 	} else {
-		// Inline elements: layout children inline (simplified - just horizontal for now)
-		childX := x
-		for _, child := range node.Children {
-			if child.Type == NodeTypeText {
-				childLayoutBox := le.buildLayoutBox(child, childX, currentY, availableWidth-childX+x)
-				if childLayoutBox != nil {
+		// Inline elements: use inline layout engine
+		if le.hasInlineContent(node) {
+			lines, totalHeight := le.inlineLayoutEngine.LayoutInlineContent(
+				node, x, currentY, availableWidth, WhiteSpaceNormal,
+			)
+			
+			// Store line boxes in the layout box
+			layoutBox.LineBoxes = lines
+			
+			// Create layout boxes for each inline box in the lines
+			for _, line := range lines {
+				for _, inlineBox := range line.InlineBoxes {
+					childLayoutBox := NewLayoutBox(inlineBox.NodeID)
+					childLayoutBox.Display = DisplayInline
+					childLayoutBox.Box = Rect{
+						X:      line.X + inlineBox.X,
+						Y:      line.Y + inlineBox.Y,
+						Width:  inlineBox.Width,
+						Height: inlineBox.Height,
+					}
 					layoutBox.AddChild(childLayoutBox)
-					childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height
+					le.nodeMap[inlineBox.NodeID] = childLayoutBox
 				}
-			} else {
-				childLayoutBox := le.buildLayoutBox(child, childX, childY, availableWidth)
+			}
+			
+			childY = currentY + totalHeight
+		} else {
+			// Fallback to old behavior for empty inline elements
+			for _, child := range node.Children {
+				childLayoutBox := le.buildLayoutBox(child, x, childY, availableWidth)
 				if childLayoutBox != nil {
 					layoutBox.AddChild(childLayoutBox)
 					childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height
@@ -341,4 +393,27 @@ func (le *LayoutEngine) getVerticalSpacing(tagName string) float32 {
 		return s
 	}
 	return 0
+}
+
+// hasInlineContent checks if a node has inline content (text or inline children)
+func (le *LayoutEngine) hasInlineContent(node *RenderNode) bool {
+	return le.hasInlineContentRecursive(node)
+}
+
+// hasInlineContentRecursive recursively checks for inline content
+func (le *LayoutEngine) hasInlineContentRecursive(node *RenderNode) bool {
+	for _, child := range node.Children {
+		if child.Type == NodeTypeText {
+			// Check if text is not empty after trimming
+			if strings.TrimSpace(child.Text) != "" {
+				return true
+			}
+		} else if !child.IsBlock() {
+			// Inline element - check its children too
+			if le.hasInlineContentRecursive(child) {
+				return true
+			}
+		}
+	}
+	return false
 }
