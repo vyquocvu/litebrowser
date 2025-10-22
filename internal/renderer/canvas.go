@@ -15,15 +15,45 @@ type CanvasRenderer struct {
 	canvasWidth  float32
 	canvasHeight float32
 	defaultSize  float32
+	
+	// Viewport for optimized rendering
+	viewportY      float32
+	viewportHeight float32
+	
+	// Cached display list for performance
+	cachedDisplayList *DisplayList
+	cachedLayoutRoot  *LayoutBox
+	cachedRenderRoot  *RenderNode
 }
 
 // NewCanvasRenderer creates a new canvas renderer
 func NewCanvasRenderer(width, height float32) *CanvasRenderer {
 	return &CanvasRenderer{
-		canvasWidth:  width,
-		canvasHeight: height,
-		defaultSize:  16.0,
+		canvasWidth:    width,
+		canvasHeight:   height,
+		defaultSize:    16.0,
+		viewportY:      0,
+		viewportHeight: height,
 	}
+}
+
+// SetViewport sets the current viewport for optimized rendering
+func (cr *CanvasRenderer) SetViewport(y, height float32) {
+	cr.viewportY = y
+	cr.viewportHeight = height
+}
+
+// isInViewport checks if a box intersects with the current viewport
+func (cr *CanvasRenderer) isInViewport(box Rect) bool {
+	// Add buffer zone above and below viewport for smoother scrolling
+	bufferZone := cr.viewportHeight * 0.5
+	viewportTop := cr.viewportY - bufferZone
+	viewportBottom := cr.viewportY + cr.viewportHeight + bufferZone
+	
+	boxBottom := box.Y + box.Height
+	
+	// Check if box intersects with viewport
+	return boxBottom >= viewportTop && box.Y <= viewportBottom
 }
 
 // Render renders the render tree and returns a Fyne container
@@ -273,4 +303,95 @@ func (cr *CanvasRenderer) getTextStyle(tagName string) fyne.TextStyle {
 	default:
 		return fyne.TextStyle{}
 	}
+}
+
+// RenderWithViewport renders the render tree with viewport culling for better performance
+func (cr *CanvasRenderer) RenderWithViewport(root *RenderNode, layoutRoot *LayoutBox) fyne.CanvasObject {
+	if root == nil || layoutRoot == nil {
+		return container.NewVBox()
+	}
+	
+	// Build or reuse display list
+	var displayList *DisplayList
+	if cr.cachedDisplayList != nil && cr.cachedRenderRoot == root && cr.cachedLayoutRoot == layoutRoot {
+		// Reuse cached display list
+		displayList = cr.cachedDisplayList
+	} else {
+		// Build new display list
+		dlb := NewDisplayListBuilder()
+		displayList = dlb.Build(layoutRoot, root)
+		
+		// Cache for next time
+		cr.cachedDisplayList = displayList
+		cr.cachedRenderRoot = root
+		cr.cachedLayoutRoot = layoutRoot
+	}
+	
+	// Filter commands based on viewport
+	objects := make([]fyne.CanvasObject, 0)
+	for _, cmd := range displayList.Commands {
+		if cr.isInViewport(cmd.Box) {
+			cr.renderCommand(cmd, &objects)
+		}
+	}
+	
+	if len(objects) == 0 {
+		return container.NewVBox()
+	}
+	
+	return container.NewVBox(objects...)
+}
+
+// renderCommand renders a single paint command to canvas objects
+func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.CanvasObject) {
+	switch cmd.Type {
+	case PaintText:
+		if strings.TrimSpace(cmd.Text) == "" {
+			return
+		}
+		
+		label := widget.NewLabel(cmd.Text)
+		label.Wrapping = fyne.TextWrapWord
+		
+		if cmd.Bold && cmd.Italic {
+			label.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+		} else if cmd.Bold {
+			label.TextStyle = fyne.TextStyle{Bold: true}
+		} else if cmd.Italic {
+			label.TextStyle = fyne.TextStyle{Italic: true}
+		}
+		
+		*objects = append(*objects, label)
+		
+	case PaintRect:
+		rect := canvas.NewRectangle(cmd.FillColor)
+		rect.SetMinSize(fyne.NewSize(cmd.Box.Width, cmd.Box.Height))
+		*objects = append(*objects, rect)
+		
+	case PaintImage:
+		// Render image placeholder
+		displayText := "[Image"
+		if cmd.ImageSrc != "" {
+			displayText += ": " + cmd.ImageSrc
+		}
+		if cmd.ImageAlt != "" {
+			displayText += " - " + cmd.ImageAlt
+		}
+		displayText += "]"
+		
+		label := widget.NewLabel(displayText)
+		label.Wrapping = fyne.TextWrapWord
+		
+		rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
+		rect.SetMinSize(fyne.NewSize(100, 100))
+		
+		*objects = append(*objects, container.NewVBox(rect, label))
+	}
+}
+
+// ClearCache clears the cached display list to force re-rendering
+func (cr *CanvasRenderer) ClearCache() {
+	cr.cachedDisplayList = nil
+	cr.cachedLayoutRoot = nil
+	cr.cachedRenderRoot = nil
 }
