@@ -527,7 +527,61 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		*objects = append(*objects, rect)
 
 	case PaintImage:
-		// Render image placeholder
+		// Try to load and render the actual image if loader is available
+		if cr.imageLoader != nil && cmd.ImageSrc != "" {
+			resolvedSrc := cr.resolveURL(cmd.ImageSrc)
+			imageData, err := cr.imageLoader.Load(resolvedSrc)
+			
+			if err == nil && imageData != nil {
+				switch imageData.State {
+				case imageloader.StateLoaded:
+					// Image loaded successfully - render it
+					img := canvas.NewImageFromImage(imageData.Image)
+					img.FillMode = canvas.ImageFillOriginal
+					img.SetMinSize(fyne.NewSize(float32(imageData.Width), float32(imageData.Height)))
+					
+					// Add alt text below the image if available
+					if cmd.ImageAlt != "" {
+						altLabel := widget.NewLabel(cmd.ImageAlt)
+						altLabel.Wrapping = fyne.TextWrapWord
+						*objects = append(*objects, container.NewVBox(img, altLabel))
+					} else {
+						*objects = append(*objects, img)
+					}
+					return
+					
+				case imageloader.StateError:
+					// Image failed to load - show error with alt text
+					displayText := "[Image Load Failed"
+					if cmd.ImageAlt != "" {
+						displayText += ": " + cmd.ImageAlt
+					}
+					displayText += "]"
+					label := widget.NewLabel(displayText)
+					label.Wrapping = fyne.TextWrapWord
+					*objects = append(*objects, label)
+					return
+					
+				case imageloader.StateLoading:
+					// Image is loading - show loading placeholder
+					displayText := "[Loading Image"
+					if cmd.ImageAlt != "" {
+						displayText += ": " + cmd.ImageAlt
+					}
+					displayText += "]"
+					label := widget.NewLabel(displayText)
+					label.Wrapping = fyne.TextWrapWord
+					
+					rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
+					rect.SetMinSize(fyne.NewSize(100, 100))
+					
+					*objects = append(*objects, container.NewVBox(rect, label))
+					return
+				}
+			}
+		}
+		
+		// Fallback: Render image placeholder
 		displayText := "[Image"
 		if cmd.ImageSrc != "" {
 			displayText += ": " + cmd.ImageSrc
