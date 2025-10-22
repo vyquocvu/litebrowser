@@ -172,3 +172,180 @@ func TestLayoutNestedElements(t *testing.T) {
 		t.Error("Text box width not set")
 	}
 }
+
+func TestComputeLayout(t *testing.T) {
+	le := NewLayoutEngine(800, 600)
+	
+	// Create a simple render tree
+	div := NewRenderNode(NodeTypeElement)
+	div.TagName = "div"
+	
+	text := NewRenderNode(NodeTypeText)
+	text.Text = "Hello"
+	div.AddChild(text)
+	
+	// Compute layout tree
+	layoutRoot := le.ComputeLayout(div)
+	
+	if layoutRoot == nil {
+		t.Fatal("ComputeLayout returned nil")
+	}
+	
+	if layoutRoot.NodeID != div.ID {
+		t.Errorf("Expected NodeID %d, got %d", div.ID, layoutRoot.NodeID)
+	}
+	
+	if layoutRoot.Box.Width != 800 {
+		t.Errorf("Expected width 800, got %f", layoutRoot.Box.Width)
+	}
+	
+	if len(layoutRoot.Children) != 1 {
+		t.Errorf("Expected 1 child, got %d", len(layoutRoot.Children))
+	}
+}
+
+func TestComputeLayoutWithMultipleChildren(t *testing.T) {
+	le := NewLayoutEngine(800, 600)
+	
+	// Create render tree with multiple children
+	parent := NewRenderNode(NodeTypeElement)
+	parent.TagName = "div"
+	
+	for i := 0; i < 3; i++ {
+		child := NewRenderNode(NodeTypeElement)
+		child.TagName = "p"
+		text := NewRenderNode(NodeTypeText)
+		text.Text = "Paragraph"
+		child.AddChild(text)
+		parent.AddChild(child)
+	}
+	
+	// Compute layout tree
+	layoutRoot := le.ComputeLayout(parent)
+	
+	if len(layoutRoot.Children) != 3 {
+		t.Errorf("Expected 3 children, got %d", len(layoutRoot.Children))
+	}
+	
+	// Verify children are stacked vertically
+	for i := 0; i < len(layoutRoot.Children)-1; i++ {
+		child1 := layoutRoot.Children[i]
+		child2 := layoutRoot.Children[i+1]
+		
+		if child2.Box.Y <= child1.Box.Y {
+			t.Errorf("Child %d should be positioned below child %d", i+1, i)
+		}
+	}
+}
+
+func TestGetLayoutBox(t *testing.T) {
+	le := NewLayoutEngine(800, 600)
+	
+	// Create render tree
+	div := NewRenderNode(NodeTypeElement)
+	div.TagName = "div"
+	
+	text := NewRenderNode(NodeTypeText)
+	text.Text = "Test"
+	div.AddChild(text)
+	
+	// Compute layout
+	layoutRoot := le.ComputeLayout(div)
+	
+	// Test GetLayoutBox
+	divBox := le.GetLayoutBox(div.ID)
+	if divBox == nil {
+		t.Error("GetLayoutBox returned nil for div")
+	}
+	if divBox != layoutRoot {
+		t.Error("GetLayoutBox returned wrong box for div")
+	}
+	
+	textBox := le.GetLayoutBox(text.ID)
+	if textBox == nil {
+		t.Error("GetLayoutBox returned nil for text")
+	}
+	if textBox.NodeID != text.ID {
+		t.Errorf("Expected NodeID %d, got %d", text.ID, textBox.NodeID)
+	}
+}
+
+func TestHitTest(t *testing.T) {
+	le := NewLayoutEngine(800, 600)
+	
+	// Create render tree
+	div := NewRenderNode(NodeTypeElement)
+	div.TagName = "div"
+	
+	text := NewRenderNode(NodeTypeText)
+	text.Text = "Test"
+	div.AddChild(text)
+	
+	// Compute layout
+	layoutRoot := le.ComputeLayout(div)
+	
+	// Manually set layout positions for testing
+	layoutRoot.Box = Rect{X: 0, Y: 0, Width: 800, Height: 100}
+	layoutRoot.Children[0].Box = Rect{X: 10, Y: 10, Width: 200, Height: 30}
+	
+	tests := []struct {
+		name       string
+		x, y       float32
+		expectedID int64
+	}{
+		{"hit child", 50, 20, text.ID},
+		{"hit parent", 500, 50, div.ID},
+		{"miss", 900, 200, 0},
+	}
+	
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := le.HitTest(layoutRoot, tt.x, tt.y)
+			if result != tt.expectedID {
+				t.Errorf("HitTest(%f, %f) = %d, expected %d", tt.x, tt.y, result, tt.expectedID)
+			}
+		})
+	}
+}
+
+func TestHitTestNested(t *testing.T) {
+	le := NewLayoutEngine(800, 600)
+	
+	// Create nested render tree: div > p > text
+	div := NewRenderNode(NodeTypeElement)
+	div.TagName = "div"
+	
+	p := NewRenderNode(NodeTypeElement)
+	p.TagName = "p"
+	div.AddChild(p)
+	
+	text := NewRenderNode(NodeTypeText)
+	text.Text = "Nested"
+	p.AddChild(text)
+	
+	// Compute layout
+	layoutRoot := le.ComputeLayout(div)
+	
+	// Manually set positions
+	layoutRoot.Box = Rect{X: 0, Y: 0, Width: 800, Height: 200}
+	layoutRoot.Children[0].Box = Rect{X: 50, Y: 50, Width: 300, Height: 100}
+	layoutRoot.Children[0].Children[0].Box = Rect{X: 60, Y: 60, Width: 100, Height: 30}
+	
+	// Hit test should return the deepest element
+	result := le.HitTest(layoutRoot, 70, 70)
+	if result != text.ID {
+		t.Errorf("Expected text node ID %d, got %d", text.ID, result)
+	}
+	
+	// Hit test on p but not on text
+	result = le.HitTest(layoutRoot, 200, 80)
+	if result != p.ID {
+		t.Errorf("Expected p node ID %d, got %d", p.ID, result)
+	}
+	
+	// Hit test on div but not on p
+	result = le.HitTest(layoutRoot, 10, 10)
+	if result != div.ID {
+		t.Errorf("Expected div node ID %d, got %d", div.ID, result)
+	}
+}

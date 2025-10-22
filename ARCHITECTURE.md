@@ -87,10 +87,15 @@ User enters URL → Add to History → Fetch Page → Parse HTML → Render
    - Provides getElementById functionality for JS
 
 5. **HTML Renderer** (`internal/renderer/`)
-   - Builds render tree from parsed HTML
-   - Calculates layout with box model
+   - Multi-tree architecture: DOM → Render Tree → Layout Tree → Display List
+   - Builds render tree from parsed HTML with unique node IDs
+   - Computes layout tree with box model calculations
+   - Generates display list for efficient painting
+   - Supports incremental updates with invalidation tracking
+   - Hit testing for interactive elements
    - Renders to Fyne canvas objects
    - Supports headings, paragraphs, lists, links, images
+   - See [RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md) for detailed architecture
 
 6. **JavaScript Runtime** (`internal/js/runtime.go`)
    - Sets HTML content for DOM operations
@@ -180,5 +185,5 @@ go test -v -cover ./internal/...
 
 - internal/net: 36.4%
 - internal/dom: 95.0%
-- internal/renderer: 100% (34 tests)
+- internal/renderer: 100% (65+ tests, including benchmarks)
 - internal/js: 92.9%

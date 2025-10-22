@@ -1,6 +1,8 @@
 package renderer
 
 import (
+	"sync/atomic"
+	
 	"golang.org/x/net/html"
 )
 
@@ -14,8 +16,12 @@ const (
 	NodeTypeText
 )
 
+// nodeIDCounter is used to generate unique node IDs
+var nodeIDCounter int64
+
 // RenderNode represents a node in the render tree
 type RenderNode struct {
+	ID       int64             // Unique node identifier
 	Type     NodeType
 	TagName  string            // HTML tag name (e.g., "div", "p", "h1")
 	Text     string            // Text content for text nodes
@@ -23,8 +29,21 @@ type RenderNode struct {
 	Children []*RenderNode     // Child nodes
 	Parent   *RenderNode       // Parent node
 	
-	// Layout properties (computed during layout phase)
+	// ComputedStyle is a placeholder for future CSS styling support
+	ComputedStyle *Style
+	
+	// Box is deprecated - use LayoutBox from layout tree instead
+	// Kept for backward compatibility during transition
 	Box *Box
+}
+
+// Style represents computed styles for a node (placeholder for future CSS support)
+type Style struct {
+	Display    string  // "block", "inline", "none", etc.
+	FontSize   float32
+	FontWeight string
+	Color      string
+	// Add more style properties as needed
 }
 
 // Box represents the layout box for a render node
@@ -41,13 +60,15 @@ type Box struct {
 	PaddingLeft   float32
 }
 
-// NewRenderNode creates a new render node
+// NewRenderNode creates a new render node with a unique ID
 func NewRenderNode(nodeType NodeType) *RenderNode {
 	return &RenderNode{
-		Type:     nodeType,
-		Attrs:    make(map[string]string),
-		Children: make([]*RenderNode, 0),
-		Box:      &Box{},
+		ID:            atomic.AddInt64(&nodeIDCounter, 1),
+		Type:          nodeType,
+		Attrs:         make(map[string]string),
+		Children:      make([]*RenderNode, 0),
+		Box:           &Box{},
+		ComputedStyle: &Style{},
 	}
 }
 
