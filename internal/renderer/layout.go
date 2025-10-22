@@ -15,16 +15,21 @@ type LayoutEngine struct {
 	
 	// nodeMap maps RenderNode IDs to their corresponding LayoutBoxes
 	nodeMap map[int64]*LayoutBox
+	
+	// fontMetrics provides accurate text measurement
+	fontMetrics *FontMetrics
 }
 
 // NewLayoutEngine creates a new layout engine
 func NewLayoutEngine(width, height float32) *LayoutEngine {
+	defaultSize := float32(16.0)
 	return &LayoutEngine{
 		canvasWidth:     width,
 		canvasHeight:    height,
-		defaultFontSize: 16.0,
+		defaultFontSize: defaultSize,
 		lineHeight:      1.5,
 		nodeMap:         make(map[int64]*LayoutBox),
+		fontMetrics:     NewFontMetrics(defaultSize),
 	}
 }
 
@@ -95,30 +100,28 @@ func (le *LayoutEngine) computeLayoutBox(node *RenderNode, layoutBox *LayoutBox,
 
 // computeTextLayout computes layout for text nodes
 func (le *LayoutEngine) computeTextLayout(node *RenderNode, layoutBox *LayoutBox, x, y, availableWidth float32) float32 {
+	// Get font size from parent element
 	fontSize := le.defaultFontSize
+	if node.Parent != nil {
+		fontSize = le.fontMetrics.GetFontSize(node.Parent.TagName)
+	}
 	
-	// Calculate text dimensions (approximate)
+	// Get text style from parent hierarchy
+	style := le.fontMetrics.GetTextStyleFromNode(node)
+	
+	// Calculate text dimensions using font metrics
 	text := strings.TrimSpace(node.Text)
 	if text == "" {
 		layoutBox.Box.Height = 0
 		return y
 	}
 	
-	// Approximate character width (varies by font)
-	charWidth := fontSize * 0.6
-	charsPerLine := int(availableWidth / charWidth)
+	// Measure text with wrapping
+	metrics := le.fontMetrics.MeasureTextWithWrapping(text, fontSize, style, availableWidth)
 	
-	if charsPerLine < 1 {
-		charsPerLine = 1
-	}
+	layoutBox.Box.Height = metrics.Height
 	
-	// Calculate number of lines needed
-	lines := (len(text) + charsPerLine - 1) / charsPerLine
-	textHeight := float32(lines) * fontSize * le.lineHeight
-	
-	layoutBox.Box.Height = textHeight
-	
-	return y + textHeight
+	return y + metrics.Height
 }
 
 // computeElementLayout computes layout for element nodes
@@ -238,32 +241,30 @@ func (le *LayoutEngine) layoutNode(node *RenderNode, x, y, availableWidth float3
 
 // layoutTextNode handles layout for text nodes
 func (le *LayoutEngine) layoutTextNode(node *RenderNode, x, y, availableWidth float32) float32 {
+	// Get font size from parent element
 	fontSize := le.defaultFontSize
+	if node.Parent != nil {
+		fontSize = le.fontMetrics.GetFontSize(node.Parent.TagName)
+	}
 	
-	// Calculate text dimensions (approximate)
+	// Get text style from parent hierarchy
+	style := le.fontMetrics.GetTextStyleFromNode(node)
+	
+	// Calculate text dimensions using font metrics
 	text := strings.TrimSpace(node.Text)
 	if text == "" {
 		return y
 	}
 	
-	// Approximate character width (varies by font)
-	charWidth := fontSize * 0.6
-	charsPerLine := int(availableWidth / charWidth)
-	
-	if charsPerLine < 1 {
-		charsPerLine = 1
-	}
-	
-	// Calculate number of lines needed
-	lines := (len(text) + charsPerLine - 1) / charsPerLine
-	textHeight := float32(lines) * fontSize * le.lineHeight
+	// Measure text with wrapping
+	metrics := le.fontMetrics.MeasureTextWithWrapping(text, fontSize, style, availableWidth)
 	
 	node.Box.X = x
 	node.Box.Y = y
 	node.Box.Width = availableWidth
-	node.Box.Height = textHeight
+	node.Box.Height = metrics.Height
 	
-	return y + textHeight
+	return y + metrics.Height
 }
 
 // layoutElementNode handles layout for element nodes
