@@ -203,6 +203,10 @@ func (cr *CanvasRenderer) renderLink(node *RenderNode, objects *[]fyne.CanvasObj
 		// Resolve URL (absolute or relative)
 		resolvedURL := cr.resolveURL(href)
 		
+		// Note: Link target attribute (_blank, _self, etc.) is available via node.GetAttribute("target")
+		// but not currently implemented as the browser doesn't support tabs yet.
+		// This is planned for Phase 1 UI Improvements (see ROADMAP.md).
+		
 		// Parse URL to create a proper Fyne URL object
 		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil {
@@ -263,7 +267,8 @@ func (cr *CanvasRenderer) resolveURL(href string) string {
 	return resolved.String()
 }
 
-// TappableHyperlink is a custom hyperlink widget that can trigger navigation callbacks
+// TappableHyperlink is a custom hyperlink widget that can trigger navigation callbacks.
+// It extends widget.Hyperlink, inheriting keyboard navigation support (Tab focus, Enter activation).
 type TappableHyperlink struct {
 	widget.Hyperlink
 	url        string
