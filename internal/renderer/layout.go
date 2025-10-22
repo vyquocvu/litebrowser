@@ -144,8 +144,36 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 	// Layout children
 	childY := currentY
 	
-	if node.IsBlock() {
-		// Block elements: stack children vertically
+	// Check if this block element contains inline content
+	// Block elements like p, div can contain inline content
+	if node.IsBlock() && le.hasInlineContent(node) {
+		// Use inline layout for the children
+		lines, totalHeight := le.inlineLayoutEngine.LayoutInlineContent(
+			node, x, currentY, availableWidth, WhiteSpaceNormal,
+		)
+		
+		// Store line boxes in the layout box
+		layoutBox.LineBoxes = lines
+		
+		// Create layout boxes for each inline box in the lines
+		for _, line := range lines {
+			for _, inlineBox := range line.InlineBoxes {
+				childLayoutBox := NewLayoutBox(inlineBox.NodeID)
+				childLayoutBox.Display = DisplayInline
+				childLayoutBox.Box = Rect{
+					X:      line.X + inlineBox.X,
+					Y:      line.Y + inlineBox.Y,
+					Width:  inlineBox.Width,
+					Height: inlineBox.Height,
+				}
+				layoutBox.AddChild(childLayoutBox)
+				le.nodeMap[inlineBox.NodeID] = childLayoutBox
+			}
+		}
+		
+		childY = currentY + totalHeight
+	} else if node.IsBlock() {
+		// Block elements: stack children vertically (when no inline content)
 		for _, child := range node.Children {
 			childLayoutBox := le.buildLayoutBox(child, x, childY, availableWidth)
 			if childLayoutBox != nil {
@@ -369,6 +397,11 @@ func (le *LayoutEngine) getVerticalSpacing(tagName string) float32 {
 
 // hasInlineContent checks if a node has inline content (text or inline children)
 func (le *LayoutEngine) hasInlineContent(node *RenderNode) bool {
+	return le.hasInlineContentRecursive(node)
+}
+
+// hasInlineContentRecursive recursively checks for inline content
+func (le *LayoutEngine) hasInlineContentRecursive(node *RenderNode) bool {
 	for _, child := range node.Children {
 		if child.Type == NodeTypeText {
 			// Check if text is not empty after trimming
@@ -376,8 +409,10 @@ func (le *LayoutEngine) hasInlineContent(node *RenderNode) bool {
 				return true
 			}
 		} else if !child.IsBlock() {
-			// Inline element
-			return true
+			// Inline element - check its children too
+			if le.hasInlineContentRecursive(child) {
+				return true
+			}
 		}
 	}
 	return false
