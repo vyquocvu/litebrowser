@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"image/color"
+	"net/url"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -27,6 +28,12 @@ type CanvasRenderer struct {
 	
 	// fontMetrics provides accurate text measurement
 	fontMetrics *FontMetrics
+	
+	// Navigation callback for link clicks
+	onNavigate NavigationCallback
+	
+	// Current page URL for resolving relative links
+	baseURL string
 }
 
 // NewCanvasRenderer creates a new canvas renderer
@@ -46,6 +53,12 @@ func NewCanvasRenderer(width, height float32) *CanvasRenderer {
 func (cr *CanvasRenderer) SetViewport(y, height float32) {
 	cr.viewportY = y
 	cr.viewportHeight = height
+}
+
+// SetNavigationCallback sets the navigation callback for link clicks
+func (cr *CanvasRenderer) SetNavigationCallback(callback NavigationCallback, baseURL string) {
+	cr.onNavigate = callback
+	cr.baseURL = baseURL
 }
 
 // isInViewport checks if a box intersects with the current viewport
@@ -187,17 +200,109 @@ func (cr *CanvasRenderer) renderLink(node *RenderNode, objects *[]fyne.CanvasObj
 	}
 
 	if hasHref && href != "" {
-		// Create a hyperlink widget
-		link := widget.NewHyperlink(text, nil)
-		// Note: Fyne's hyperlink requires a proper URL parse,
-		// but for now we'll just display as styled text
-		*objects = append(*objects, link)
+		// Resolve URL (absolute or relative)
+		resolvedURL := cr.resolveURL(href)
+		
+		// Note: Link target attribute (_blank, _self, etc.) is available via node.GetAttribute("target")
+		// but not currently implemented as the browser doesn't support tabs yet.
+		// This is planned for Phase 1 UI Improvements (see ROADMAP.md).
+		
+		// Parse URL to create a proper Fyne URL object
+		parsedURL, err := url.Parse(resolvedURL)
+		if err != nil {
+			// If URL parsing fails, display as text
+			label := widget.NewLabel(text)
+			label.Wrapping = fyne.TextWrapWord
+			*objects = append(*objects, label)
+			return
+		}
+		
+		// Create a clickable hyperlink widget
+		link := widget.NewHyperlink(text, parsedURL)
+		link.Wrapping = fyne.TextWrapWord
+		
+		// Override the default tap handler to use our navigation callback
+		if cr.onNavigate != nil {
+			// Create a custom tappable widget
+			tappableLink := newTappableHyperlink(text, resolvedURL, cr.onNavigate)
+			*objects = append(*objects, tappableLink)
+		} else {
+			// Fallback to default hyperlink behavior
+			*objects = append(*objects, link)
+		}
 	} else {
 		// No href, just display as text
 		label := widget.NewLabel(text)
 		label.Wrapping = fyne.TextWrapWord
 		*objects = append(*objects, label)
 	}
+}
+
+// resolveURL resolves a relative or absolute URL against the base URL
+func (cr *CanvasRenderer) resolveURL(href string) string {
+	// If href is already absolute, return as-is
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		return href
+	}
+	
+	// If no base URL, return href as-is
+	if cr.baseURL == "" {
+		return href
+	}
+	
+	// Parse base URL
+	baseURL, err := url.Parse(cr.baseURL)
+	if err != nil {
+		return href
+	}
+	
+	// Parse relative href
+	relURL, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+	
+	// Resolve relative URL against base
+	resolved := baseURL.ResolveReference(relURL)
+	return resolved.String()
+}
+
+// TappableHyperlink is a custom hyperlink widget that can trigger navigation callbacks.
+// It extends widget.Hyperlink, inheriting keyboard navigation support (Tab focus, Enter activation).
+type TappableHyperlink struct {
+	widget.Hyperlink
+	url        string
+	onNavigate NavigationCallback
+}
+
+// newTappableHyperlink creates a new tappable hyperlink
+func newTappableHyperlink(text, urlStr string, onNavigate NavigationCallback) *TappableHyperlink {
+	parsedURL := urlParse(urlStr)
+	link := &TappableHyperlink{
+		url:        urlStr,
+		onNavigate: onNavigate,
+	}
+	link.ExtendBaseWidget(link)
+	link.Text = text
+	link.URL = parsedURL
+	link.Wrapping = fyne.TextWrapWord
+	return link
+}
+
+// Tapped handles tap events on the hyperlink
+func (t *TappableHyperlink) Tapped(_ *fyne.PointEvent) {
+	if t.onNavigate != nil {
+		t.onNavigate(t.url)
+	}
+}
+
+// urlParse is a helper that returns nil on parse error
+func urlParse(urlStr string) *url.URL {
+	parsed, err := url.Parse(urlStr)
+	if err != nil {
+		return nil
+	}
+	return parsed
 }
 
 // renderList renders ul/ol elements
@@ -369,6 +474,35 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		rect.SetMinSize(fyne.NewSize(100, 100))
 
 		*objects = append(*objects, container.NewVBox(rect, label))
+		
+	case PaintLink:
+		// Render clickable link
+		if cmd.LinkText == "" {
+			return
+		}
+		
+		// Resolve URL (absolute or relative)
+		resolvedURL := cr.resolveURL(cmd.LinkURL)
+		
+		// Create a clickable hyperlink widget
+		if cr.onNavigate != nil {
+			// Create a custom tappable widget
+			tappableLink := newTappableHyperlink(cmd.LinkText, resolvedURL, cr.onNavigate)
+			*objects = append(*objects, tappableLink)
+		} else {
+			// Fallback to default hyperlink behavior
+			parsedURL, err := url.Parse(resolvedURL)
+			if err == nil {
+				link := widget.NewHyperlink(cmd.LinkText, parsedURL)
+				link.Wrapping = fyne.TextWrapWord
+				*objects = append(*objects, link)
+			} else {
+				// If URL parsing fails, display as text
+				label := widget.NewLabel(cmd.LinkText)
+				label.Wrapping = fyne.TextWrapWord
+				*objects = append(*objects, label)
+			}
+		}
 	}
 }
 

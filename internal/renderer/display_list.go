@@ -2,6 +2,7 @@ package renderer
 
 import (
 	"image/color"
+	"strings"
 )
 
 // PaintCommandType represents the type of paint command
@@ -14,6 +15,8 @@ const (
 	PaintRect
 	// PaintImage represents an image paint command
 	PaintImage
+	// PaintLink represents a link paint command
+	PaintLink
 )
 
 // PaintCommand represents a single paint operation
@@ -36,6 +39,10 @@ type PaintCommand struct {
 	// Image-specific fields
 	ImageSrc string
 	ImageAlt string
+	
+	// Link-specific fields
+	LinkURL  string
+	LinkText string
 }
 
 // DisplayList represents a list of paint commands
@@ -168,6 +175,26 @@ func (dlb *DisplayListBuilder) addTextCommand(layoutBox *LayoutBox, renderNode *
 
 // addElementCommand adds paint commands for an element
 func (dlb *DisplayListBuilder) addElementCommand(layoutBox *LayoutBox, renderNode *RenderNode, displayList *DisplayList) {
+	// For link elements, add a link paint command
+	if renderNode.TagName == "a" {
+		href, hasHref := renderNode.GetAttribute("href")
+		if hasHref && href != "" {
+			// Extract link text from child text nodes
+			linkText := dlb.extractText(renderNode)
+			if linkText != "" {
+				cmd := &PaintCommand{
+					Type:     PaintLink,
+					NodeID:   layoutBox.NodeID,
+					Box:      layoutBox.Box,
+					LinkURL:  href,
+					LinkText: linkText,
+				}
+				displayList.AddCommand(cmd)
+			}
+		}
+		return
+	}
+	
 	// For image elements, add a rectangle placeholder and text
 	if renderNode.TagName == "img" {
 		// Add background rectangle
@@ -199,4 +226,28 @@ func (dlb *DisplayListBuilder) addElementCommand(layoutBox *LayoutBox, renderNod
 	
 	// For other elements, we primarily rely on their children for rendering
 	// but we could add background colors, borders, etc. here in the future
+}
+
+// extractText extracts text content from a render node
+func (dlb *DisplayListBuilder) extractText(node *RenderNode) string {
+	if node == nil {
+		return ""
+	}
+	
+	if node.Type == NodeTypeText {
+		return strings.TrimSpace(node.Text)
+	}
+	
+	var result strings.Builder
+	for _, child := range node.Children {
+		text := dlb.extractText(child)
+		if text != "" {
+			if result.Len() > 0 {
+				result.WriteString(" ")
+			}
+			result.WriteString(text)
+		}
+	}
+	
+	return strings.TrimSpace(result.String())
 }

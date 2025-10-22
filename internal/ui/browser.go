@@ -78,6 +78,10 @@ func (b *Browser) SetHTMLContent(content string) {
 
 // RenderHTMLContent renders HTML content using the canvas-based renderer
 func (b *Browser) RenderHTMLContent(htmlContent string) error {
+	// Set the current URL for resolving relative links
+	currentURL := b.state.GetCurrentURL()
+	b.htmlRenderer.SetCurrentURL(currentURL)
+	
 	canvasObject, err := b.htmlRenderer.RenderHTML(htmlContent)
 	if err != nil {
 		return err
@@ -101,6 +105,12 @@ func (b *Browser) RenderHTMLContent(htmlContent string) error {
 // SetNavigationCallback sets the callback for when navigation is requested
 func (b *Browser) SetNavigationCallback(callback NavigationCallback) {
 	b.onNavigate = callback
+	// Also pass the callback to the renderer for link clicks
+	b.htmlRenderer.SetNavigationCallback(func(url string) {
+		if b.onNavigate != nil {
+			b.onNavigate(url)
+		}
+	})
 }
 
 // Show displays the browser window
