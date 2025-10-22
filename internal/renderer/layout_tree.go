@@ -39,6 +39,9 @@ type LayoutBox struct {
 	MarginRight  float32
 	MarginBottom float32
 	MarginLeft   float32
+	
+	// Inline layout information
+	LineBoxes []*LineBox // Line boxes for inline content (if this contains inline children)
 }
 
 // NewLayoutBox creates a new layout box

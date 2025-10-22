@@ -218,6 +218,15 @@ func (ile *InlineLayoutEngine) addTextPiece(
 		nextY := (*currentLine).Y + (*currentLine).Height
 		*currentLine = ile.newLineBox(lineX, nextY, availableWidth)
 		spaceWidth = 0 // No space at start of new line
+		
+		// Re-measure for new line
+		totalWidth = metrics.Width
+	}
+	
+	// If text still doesn't fit (very long word), break it into characters
+	if metrics.Width > (*currentLine).AvailableWidth && len((*currentLine).InlineBoxes) == 0 {
+		ile.addTextWithCharacterBreaking(text, node, currentLine, lines, lineX, availableWidth, fontSize, style)
+		return
 	}
 	
 	// Create inline box for text
@@ -243,6 +252,99 @@ func (ile *InlineLayoutEngine) addTextPiece(
 	}
 	if inlineBox.Descent > (*currentLine).Descent {
 		(*currentLine).Descent = inlineBox.Descent
+	}
+}
+
+// addTextWithCharacterBreaking breaks very long words at character boundaries
+func (ile *InlineLayoutEngine) addTextWithCharacterBreaking(
+	text string,
+	node *RenderNode,
+	currentLine **LineBox,
+	lines *[]*LineBox,
+	lineX, availableWidth float32,
+	fontSize float32,
+	style fyne.TextStyle,
+) {
+	// Break text into characters and fit as many as possible on each line
+	currentPiece := strings.Builder{}
+	
+	for _, ch := range text {
+		testPiece := currentPiece.String() + string(ch)
+		testMetrics := ile.fontMetrics.MeasureText(testPiece, fontSize, style)
+		
+		if testMetrics.Width <= (*currentLine).AvailableWidth {
+			// Character fits
+			currentPiece.WriteRune(ch)
+		} else {
+			// Character doesn't fit - add current piece and start new line
+			if currentPiece.Len() > 0 {
+				piece := currentPiece.String()
+				pieceMetrics := ile.fontMetrics.MeasureText(piece, fontSize, style)
+				
+				inlineBox := &InlineBox{
+					NodeID:        node.ID,
+					X:             (*currentLine).Width,
+					Y:             0,
+					Width:         pieceMetrics.Width,
+					Height:        pieceMetrics.Height,
+					Ascent:        pieceMetrics.Ascent,
+					Descent:       pieceMetrics.Descent,
+					Text:          piece,
+					IsText:        true,
+					VerticalAlign: VerticalAlignBaseline,
+				}
+				
+				(*currentLine).InlineBoxes = append((*currentLine).InlineBoxes, inlineBox)
+				(*currentLine).Width += pieceMetrics.Width
+				
+				if inlineBox.Ascent > (*currentLine).Ascent {
+					(*currentLine).Ascent = inlineBox.Ascent
+				}
+				if inlineBox.Descent > (*currentLine).Descent {
+					(*currentLine).Descent = inlineBox.Descent
+				}
+			}
+			
+			// Start new line
+			ile.finalizeLine(*currentLine)
+			*lines = append(*lines, *currentLine)
+			
+			nextY := (*currentLine).Y + (*currentLine).Height
+			*currentLine = ile.newLineBox(lineX, nextY, availableWidth)
+			
+			// Start new piece with current character
+			currentPiece.Reset()
+			currentPiece.WriteRune(ch)
+		}
+	}
+	
+	// Add remaining piece
+	if currentPiece.Len() > 0 {
+		piece := currentPiece.String()
+		pieceMetrics := ile.fontMetrics.MeasureText(piece, fontSize, style)
+		
+		inlineBox := &InlineBox{
+			NodeID:        node.ID,
+			X:             (*currentLine).Width,
+			Y:             0,
+			Width:         pieceMetrics.Width,
+			Height:        pieceMetrics.Height,
+			Ascent:        pieceMetrics.Ascent,
+			Descent:       pieceMetrics.Descent,
+			Text:          piece,
+			IsText:        true,
+			VerticalAlign: VerticalAlignBaseline,
+		}
+		
+		(*currentLine).InlineBoxes = append((*currentLine).InlineBoxes, inlineBox)
+		(*currentLine).Width += pieceMetrics.Width
+		
+		if inlineBox.Ascent > (*currentLine).Ascent {
+			(*currentLine).Ascent = inlineBox.Ascent
+		}
+		if inlineBox.Descent > (*currentLine).Descent {
+			(*currentLine).Descent = inlineBox.Descent
+		}
 	}
 }
 

@@ -452,6 +452,40 @@ func TestGetFontSizeForNode(t *testing.T) {
 	}
 }
 
+func TestCharacterBreaking(t *testing.T) {
+	ile := NewInlineLayoutEngine(NewFontMetrics(16.0), 16.0)
+	
+	// Create a paragraph with a very long word
+	p := NewRenderNode(NodeTypeElement)
+	p.TagName = "p"
+	
+	text := NewRenderNode(NodeTypeText)
+	text.Text = "verylongwordthatcannotfitonasinglelineshouldbebrokenatcharacterboundaries"
+	text.Parent = p
+	p.AddChild(text)
+	
+	// Layout with narrow width to force character breaking
+	lines, totalHeight := ile.LayoutInlineContent(p, 0, 0, 50, WhiteSpaceNormal)
+	
+	if len(lines) <= 1 {
+		t.Errorf("Expected multiple lines due to character breaking, got %d", len(lines))
+	}
+	if totalHeight <= 20 {
+		t.Errorf("Expected totalHeight > 20 for broken text, got %f", totalHeight)
+	}
+	
+	// Verify each line has content
+	for i, line := range lines {
+		if len(line.InlineBoxes) == 0 {
+			t.Errorf("Line %d has no inline boxes", i)
+		}
+		// Verify line doesn't exceed available width significantly
+		if line.Width > line.AvailableWidth*1.1 { // Allow 10% tolerance
+			t.Errorf("Line %d width %f exceeds available width %f", i, line.Width, line.AvailableWidth)
+		}
+	}
+}
+
 // Helper method to provide a string representation for WhiteSpaceMode
 func (mode WhiteSpaceMode) String() string {
 	switch mode {

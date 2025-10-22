@@ -160,6 +160,9 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 				node, x, currentY, availableWidth, WhiteSpaceNormal,
 			)
 			
+			// Store line boxes in the layout box
+			layoutBox.LineBoxes = lines
+			
 			// Create layout boxes for each inline box in the lines
 			for _, line := range lines {
 				for _, inlineBox := range line.InlineBoxes {
