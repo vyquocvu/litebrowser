@@ -2,7 +2,7 @@ package renderer
 
 import (
 	"strings"
-	
+
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"golang.org/x/net/html"
@@ -12,7 +12,7 @@ import (
 type Renderer struct {
 	layoutEngine   *LayoutEngine
 	canvasRenderer *CanvasRenderer
-	
+
 	// Cached trees for performance
 	currentRenderTree *RenderNode
 	currentLayoutTree *LayoutBox
@@ -33,31 +33,31 @@ func (r *Renderer) RenderHTML(htmlContent string) (fyne.CanvasObject, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Find body element
 	bodyNode := findBodyNode(doc)
 	if bodyNode == nil {
 		// No body found, use the entire document
 		bodyNode = doc
 	}
-	
+
 	// Build render tree
 	renderTree := BuildRenderTree(bodyNode)
 	if renderTree == nil {
 		// Return empty container if no content
 		return r.canvasRenderer.Render(nil), nil
 	}
-	
+
 	// Perform layout
 	layoutTree := r.layoutEngine.ComputeLayout(renderTree)
-	
+
 	// Cache trees for viewport updates
 	r.currentRenderTree = renderTree
 	r.currentLayoutTree = layoutTree
-	
+
 	// Render to canvas with viewport optimization
 	canvasObject := r.canvasRenderer.RenderWithViewport(renderTree, layoutTree)
-	
+
 	return canvasObject, nil
 }
 
@@ -92,17 +92,17 @@ func findBodyNode(node *html.Node) *html.Node {
 	if node == nil {
 		return nil
 	}
-	
+
 	if node.Type == html.ElementNode && node.Data == "body" {
 		return node
 	}
-	
+
 	for child := node.FirstChild; child != nil; child = child.NextSibling {
 		if found := findBodyNode(child); found != nil {
 			return found
 		}
 	}
-	
+
 	return nil
 }
 
