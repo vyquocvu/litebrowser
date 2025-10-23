@@ -23,6 +23,8 @@ type Browser struct {
 	forwardButton  *widget.Button
 	refreshButton  *widget.Button
 	bookmarkButton *widget.Button
+	loadingSpinner *widget.ProgressBarInfinite
+	loadingLabel   *widget.Label
 	onNavigate     NavigationCallback
 	htmlRenderer   *renderer.Renderer
 }
@@ -54,13 +56,21 @@ func NewBrowser() *Browser {
 	// Create scroll container
 	contentScroll := container.NewScroll(contentBox)
 
+	// Create loading indicator (initially hidden)
+	loadingSpinner := widget.NewProgressBarInfinite()
+	loadingSpinner.Hide()
+	loadingLabel := widget.NewLabel("Loading...")
+	loadingLabel.Hide()
+
 	browser := &Browser{
-		app:           a,
-		window:        w,
-		contentBox:    contentBox,
-		contentScroll: contentScroll,
-		state:         state,
-		htmlRenderer:  htmlRenderer,
+		app:            a,
+		window:         w,
+		contentBox:     contentBox,
+		contentScroll:  contentScroll,
+		state:          state,
+		htmlRenderer:   htmlRenderer,
+		loadingSpinner: loadingSpinner,
+		loadingLabel:   loadingLabel,
 	}
 
 	return browser
@@ -125,8 +135,15 @@ func (b *Browser) Show() {
 		b.urlEntry,
 	)
 
-	// Create main layout
-	content := container.NewBorder(navBar, nil, nil, nil, b.contentScroll)
+	// Create loading indicator bar
+	loadingBar := container.NewHBox(b.loadingSpinner, b.loadingLabel)
+
+	// Create main layout with loading indicator
+	content := container.NewBorder(
+		container.NewVBox(navBar, loadingBar),
+		nil, nil, nil,
+		b.contentScroll,
+	)
 
 	b.window.SetContent(content)
 	b.window.ShowAndRun()
@@ -238,4 +255,23 @@ func (b *Browser) GetBookmarks() []string {
 // GetHistory returns the navigation history
 func (b *Browser) GetHistory() []string {
 	return b.state.GetHistory()
+}
+
+// ShowLoading displays the loading indicator
+func (b *Browser) ShowLoading() {
+	b.loadingSpinner.Show()
+	b.loadingLabel.Show()
+	b.loadingSpinner.Start()
+}
+
+// HideLoading hides the loading indicator
+func (b *Browser) HideLoading() {
+	b.loadingSpinner.Stop()
+	b.loadingSpinner.Hide()
+	b.loadingLabel.Hide()
+}
+
+// GetApp returns the Fyne application instance for thread-safe operations
+func (b *Browser) GetApp() fyne.App {
+	return b.app
 }
