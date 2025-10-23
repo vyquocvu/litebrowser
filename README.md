@@ -4,7 +4,7 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
 
 ## Features
 
-- **HTTP Fetching**: Fetch web pages using the built-in net/http package
+- **HTTP Fetching**: Async fetch with cancellation support using context
 - **HTML Parsing**: Parse HTML and extract body text using golang.org/x/net/html
 - **HTML Rendering**: Canvas-based renderer with layout engine
   - Render tree for optimized DOM representation
@@ -15,6 +15,11 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
   - **High-performance viewport-based rendering** (30-65x faster than traditional approaches)
   - Display list caching for smooth scrolling
   - Viewport culling to only render visible content
+- **Async Architecture**: Non-blocking page loads with responsive UI
+  - Background goroutines for network and parsing operations
+  - Loading spinner with visual feedback
+  - Cancellable requests (navigate away anytime)
+  - Context-based timeout and cancellation support
 - **JavaScript Runtime**: Execute JavaScript with Goja engine
   - `console.log()` support
   - `document.getElementById()` support
@@ -117,10 +122,12 @@ This will:
 1. Open a window titled "Litebrowser" with navigation controls
 2. Display a welcome message
 3. Allow you to enter a URL in the address bar
-4. Fetch and display web pages with full navigation support
-5. Enable back/forward navigation between pages
-6. Support bookmark management with visual indicators
-7. Initialize the Goja runtime with `console.log` and `document.getElementById`
+4. Fetch and display web pages with async loading (UI stays responsive)
+5. Show a loading spinner during page fetch and render
+6. Enable back/forward navigation between pages
+7. Support bookmark management with visual indicators
+8. Initialize the Goja runtime with `console.log` and `document.getElementById`
+9. Allow cancelling slow page loads by navigating to a new URL
 
 ### Testing Components (No GUI)
 
@@ -161,14 +168,21 @@ The browser demonstrates web functionality by:
 
 ### Project Structure
 
-- **internal/net**: HTTP client for fetching web pages
+- **internal/net**: Async HTTP client with context support for fetching web pages
 - **internal/dom**: HTML parser for extracting content
 - **internal/renderer**: Canvas-based HTML renderer with layout engine
 - **internal/js**: JavaScript runtime wrapper around Goja
-- **internal/ui**: Fyne-based GUI components
-- **cmd/browser**: Main browser application
+- **internal/ui**: Fyne-based GUI components with loading indicator
+- **cmd/browser**: Main browser application with async page loading
 - **cmd/renderer-demo**: Renderer demonstration without GUI
 - **cmd/test**: Testing utility without GUI dependencies
+
+### Key Documentation
+
+- **[ASYNC_ARCHITECTURE.md](ASYNC_ARCHITECTURE.md)**: Async fetch/render architecture
+- **[PERFORMANCE.md](PERFORMANCE.md)**: Viewport culling and display list caching
+- **[RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md)**: Multi-tree rendering system
+- **[SCROLL_PERFORMANCE_SUMMARY.md](SCROLL_PERFORMANCE_SUMMARY.md)**: Scroll optimizations
 
 ### Adding Features
 
