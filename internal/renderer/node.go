@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"strings"
 	"sync/atomic"
 	
 	"golang.org/x/net/html"
@@ -102,68 +103,88 @@ func (n *RenderNode) IsBlock() bool {
 }
 
 // BuildRenderTree builds a render tree from an HTML node
+// BuildRenderTree creates a render tree from an HTML node
+// It filters out non-displayable elements and processes the DOM tree
 func BuildRenderTree(htmlNode *html.Node) *RenderNode {
 	if htmlNode == nil {
 		return nil
 	}
 	
-	// Skip non-displayable nodes
-	if htmlNode.Type == html.CommentNode || htmlNode.Type == html.DoctypeNode {
-		// Process siblings if any
-		if htmlNode.NextSibling != nil {
-			return BuildRenderTree(htmlNode.NextSibling)
-		}
+	// Process current node based on its type
+	switch htmlNode.Type {
+	case html.CommentNode, html.DoctypeNode:
+		// Skip non-displayable nodes
+		return nil
+		
+	case html.TextNode:
+		return processTextNode(htmlNode)
+		
+	case html.ElementNode:
+		return processElementNode(htmlNode)
+		
+	default:
+		// Handle any other node types by skipping them
+		return nil
+	}
+}
+
+// processTextNode handles text node processing
+func processTextNode(htmlNode *html.Node) *RenderNode {
+	// Check if the text node contains only whitespace
+	trimmedText := strings.TrimSpace(htmlNode.Data)
+	if trimmedText == "" {
 		return nil
 	}
 	
-	var root *RenderNode
+	// Create a text node with normalized content
+	// This preserves meaningful whitespace but collapses excessive whitespace
+	node := NewRenderNode(NodeTypeText)
 	
-	if htmlNode.Type == html.TextNode {
-		// Create text node
-		text := htmlNode.Data
-		// Skip whitespace-only text nodes
-		if len(text) > 0 && text != "\n" && text != "\r\n" && text != " " {
-			root = NewRenderNode(NodeTypeText)
-			root.Text = text
-		}
-	} else if htmlNode.Type == html.ElementNode {
-		// Skip non-visible tags (script, style, meta, link, etc.)
-		nonVisibleTags := map[string]bool{
-			"script": true,
-			"style": true,
-			"meta": true,
-			"link": true,
-			"head": true,
-			"noscript": true,
-			"template": true,
-			"iframe": true, // Optional: can be included or excluded based on requirements
-		}
-		
-		if nonVisibleTags[htmlNode.Data] {
-			// Skip this node but process siblings
-			if htmlNode.NextSibling != nil {
-				return BuildRenderTree(htmlNode.NextSibling)
-			}
-			return nil
-		}
-		
-		// Create element node
-		root = NewRenderNode(NodeTypeElement)
-		root.TagName = htmlNode.Data
-		
-		// Copy attributes
-		for _, attr := range htmlNode.Attr {
-			root.SetAttribute(attr.Key, attr.Val)
-		}
-		
-		// Process children
-		for child := htmlNode.FirstChild; child != nil; child = child.NextSibling {
-			childNode := BuildRenderTree(child)
-			if childNode != nil {
-				root.AddChild(childNode)
-			}
+	// Normalize whitespace: collapse multiple spaces into one
+	// but preserve line breaks for proper rendering
+	normalizedText := strings.Join(strings.Fields(htmlNode.Data), " ")
+	node.Text = normalizedText
+	
+	return node
+}
+
+// processElementNode handles element node processing
+func processElementNode(htmlNode *html.Node) *RenderNode {
+	// List of tags that should not be rendered
+	nonVisibleTags := map[string]bool{
+		"script":   true,
+		"style":    true,
+		"meta":     true,
+		"link":     true,
+		"head":     true,
+		"noscript": true,
+		"template": true,
+		"iframe":   true,
+		"title":    true,
+		"base":     true,
+	}
+	
+	// Skip non-visible tags
+	if nonVisibleTags[htmlNode.Data] {
+		return nil
+	}
+	
+	// Create element node
+	node := NewRenderNode(NodeTypeElement)
+	node.TagName = htmlNode.Data
+	
+	// Copy attributes
+	for _, attr := range htmlNode.Attr {
+		node.SetAttribute(attr.Key, attr.Val)
+	}
+	
+	// Process children
+	for child := htmlNode.FirstChild; child != nil; child = child.NextSibling {
+		childNode := BuildRenderTree(child)
+		if childNode != nil {
+			node.AddChild(childNode)
 		}
 	}
 	
-	return root
+	return node
 }
