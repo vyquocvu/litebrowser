@@ -127,6 +127,26 @@ func BuildRenderTree(htmlNode *html.Node) *RenderNode {
 			root.Text = text
 		}
 	} else if htmlNode.Type == html.ElementNode {
+		// Skip non-visible tags (script, style, meta, link, etc.)
+		nonVisibleTags := map[string]bool{
+			"script": true,
+			"style": true,
+			"meta": true,
+			"link": true,
+			"head": true,
+			"noscript": true,
+			"template": true,
+			"iframe": true, // Optional: can be included or excluded based on requirements
+		}
+		
+		if nonVisibleTags[htmlNode.Data] {
+			// Skip this node but process siblings
+			if htmlNode.NextSibling != nil {
+				return BuildRenderTree(htmlNode.NextSibling)
+			}
+			return nil
+		}
+		
 		// Create element node
 		root = NewRenderNode(NodeTypeElement)
 		root.TagName = htmlNode.Data
