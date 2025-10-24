@@ -91,23 +91,25 @@ func (b *Browser) RenderHTMLContent(htmlContent string) error {
 	// Set the current URL for resolving relative links
 	currentURL := b.state.GetCurrentURL()
 	b.htmlRenderer.SetCurrentURL(currentURL)
-	
+
 	canvasObject, err := b.htmlRenderer.RenderHTML(htmlContent)
 	if err != nil {
 		return err
 	}
 
-	// Update the scroll container with the rendered content
-	b.contentScroll.Content = canvasObject
+	// Update the scroll container with the rendered content on the main thread
+	fyne.Do(func() {
+		b.contentScroll.Content = canvasObject
 
-	// Get content height and update viewport
-	contentHeight := b.htmlRenderer.GetContentHeight()
-	if contentHeight > 0 {
-		// Initialize viewport to full height
-		b.htmlRenderer.SetViewport(0, b.contentScroll.Size().Height)
-	}
+		// Get content height and update viewport
+		contentHeight := b.htmlRenderer.GetContentHeight()
+		if contentHeight > 0 {
+			// Initialize viewport to full height
+			b.htmlRenderer.SetViewport(0, b.contentScroll.Size().Height)
+		}
 
-	b.contentScroll.Refresh()
+		b.contentScroll.Refresh()
+	})
 
 	return nil
 }
@@ -259,16 +261,22 @@ func (b *Browser) GetHistory() []string {
 
 // ShowLoading displays the loading indicator
 func (b *Browser) ShowLoading() {
-	b.loadingSpinner.Show()
-	b.loadingLabel.Show()
-	b.loadingSpinner.Start()
+	// Use fyne.Do to ensure UI updates happen on the main thread
+	fyne.Do(func() {
+		b.loadingSpinner.Show()
+		b.loadingLabel.Show()
+		b.loadingSpinner.Start()
+	})
 }
 
 // HideLoading hides the loading indicator
 func (b *Browser) HideLoading() {
-	b.loadingSpinner.Stop()
-	b.loadingSpinner.Hide()
-	b.loadingLabel.Hide()
+	// Use fyne.Do to ensure UI updates happen on the main thread
+	fyne.Do(func() {
+		b.loadingSpinner.Stop()
+		b.loadingSpinner.Hide()
+		b.loadingLabel.Hide()
+	})
 }
 
 // GetApp returns the Fyne application instance for thread-safe operations
