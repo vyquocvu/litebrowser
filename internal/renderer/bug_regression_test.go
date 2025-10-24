@@ -11,7 +11,6 @@ import (
 // HTML content was being rendered multiple times due to duplicate LayoutBox
 // instances being created for inline content.
 //
-// Bug Report: https://github.com/vyquocvu/goosie/issues/XXX
 // The issue was that when text wrapped across multiple lines, each word
 // got its own LayoutBox with the same NodeID, causing the display list
 // builder to render the text multiple times.
@@ -45,7 +44,10 @@ func TestBugFixDuplicateRendering(t *testing.T) {
 	}
 
 	// Count the number of rendered objects
-	vbox := canvasObject.(*fyne.Container)
+	vbox, ok := canvasObject.(*fyne.Container)
+	if !ok {
+		t.Fatalf("Expected canvasObject to be *fyne.Container, got %T", canvasObject)
+	}
 	
 	// Expected: 3 objects (h1, p, link)
 	// Before fix: 19 objects (each word rendered separately, causing duplication)
