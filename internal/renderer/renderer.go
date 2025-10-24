@@ -118,8 +118,9 @@ func (r *Renderer) RenderHTMLBody(htmlContent string) (fyne.CanvasObject, error)
 
 	// Create a new root node to hold the parsed fragment.
 	root := &html.Node{
-		Type: html.ElementNode,
-		Data: "body",
+		Type:     html.ElementNode,
+		Data:     "body",
+		DataAtom: atom.Body,
 	}
 	for _, node := range nodes {
 		root.AppendChild(node)
