@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 	
 	imageloader "github.com/vyquocvu/litebrowser/internal/image"
 )
@@ -104,7 +105,47 @@ func (r *Renderer) GetContentHeight() float32 {
 
 // RenderHTMLBody renders just the body content of an HTML document
 func (r *Renderer) RenderHTMLBody(htmlContent string) (fyne.CanvasObject, error) {
-	return r.RenderHTML(htmlContent)
+	// Use html.ParseFragment to handle content that is expected to be inside a <body> tag.
+	// This avoids wrapping the content in an extra <html><body>...</body></html> structure.
+	nodes, err := html.ParseFragment(strings.NewReader(htmlContent), &html.Node{
+		Type:     html.ElementNode,
+		Data:     "body",
+		DataAtom: atom.Body,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Create a new root node to hold the parsed fragment.
+	root := &html.Node{
+		Type:     html.ElementNode,
+		Data:     "body",
+		DataAtom: atom.Body,
+	}
+	for _, node := range nodes {
+		root.AppendChild(node)
+	}
+
+	// Build the render tree from the fragment.
+	renderTree := BuildRenderTree(root)
+	if renderTree == nil {
+		return r.canvasRenderer.Render(nil), nil
+	}
+
+	// Perform layout.
+	layoutTree := r.layoutEngine.ComputeLayout(renderTree)
+
+	// Cache trees for viewport updates.
+	r.currentRenderTree = renderTree
+	r.currentLayoutTree = layoutTree
+
+	// Pass navigation callback to canvas renderer.
+	r.canvasRenderer.SetNavigationCallback(r.onNavigate, r.currentURL)
+
+	// Render to canvas with viewport optimization.
+	canvasObject := r.canvasRenderer.RenderWithViewport(renderTree, layoutTree)
+
+	return canvasObject, nil
 }
 
 // findBodyNode finds the body element in an HTML document
