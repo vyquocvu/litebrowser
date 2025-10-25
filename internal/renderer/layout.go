@@ -155,19 +155,18 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 		// Store line boxes in the layout box
 		layoutBox.LineBoxes = lines
 		
-		// Create layout boxes for each inline box in the lines
+		// DO NOT create child LayoutBox instances for inline boxes
+		// The LineBoxes contain all the information needed for rendering
+		// However, we still need to populate nodeMap for GetLayoutBox to work
+		processedNodeIDs := make(map[int64]bool)
 		for _, line := range lines {
 			for _, inlineBox := range line.InlineBoxes {
-				childLayoutBox := NewLayoutBox(inlineBox.NodeID)
-				childLayoutBox.Display = DisplayInline
-				childLayoutBox.Box = Rect{
-					X:      line.X + inlineBox.X,
-					Y:      line.Y + inlineBox.Y,
-					Width:  inlineBox.Width,
-					Height: inlineBox.Height,
+				if !processedNodeIDs[inlineBox.NodeID] {
+					processedNodeIDs[inlineBox.NodeID] = true
+					// Map the inline node ID to the parent layout box
+					// This allows GetLayoutBox to find a box for inline nodes
+					le.nodeMap[inlineBox.NodeID] = layoutBox
 				}
-				layoutBox.AddChild(childLayoutBox)
-				le.nodeMap[inlineBox.NodeID] = childLayoutBox
 			}
 		}
 		
@@ -191,19 +190,18 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 			// Store line boxes in the layout box
 			layoutBox.LineBoxes = lines
 			
-			// Create layout boxes for each inline box in the lines
+			// DO NOT create child LayoutBox instances for inline boxes
+			// The LineBoxes contain all the information needed for rendering
+			// However, we still need to populate nodeMap for GetLayoutBox to work
+			processedNodeIDs := make(map[int64]bool)
 			for _, line := range lines {
 				for _, inlineBox := range line.InlineBoxes {
-					childLayoutBox := NewLayoutBox(inlineBox.NodeID)
-					childLayoutBox.Display = DisplayInline
-					childLayoutBox.Box = Rect{
-						X:      line.X + inlineBox.X,
-						Y:      line.Y + inlineBox.Y,
-						Width:  inlineBox.Width,
-						Height: inlineBox.Height,
+					if !processedNodeIDs[inlineBox.NodeID] {
+						processedNodeIDs[inlineBox.NodeID] = true
+						// Map the inline node ID to the parent layout box
+						// This allows GetLayoutBox to find a box for inline nodes
+						le.nodeMap[inlineBox.NodeID] = layoutBox
 					}
-					layoutBox.AddChild(childLayoutBox)
-					le.nodeMap[inlineBox.NodeID] = childLayoutBox
 				}
 			}
 			

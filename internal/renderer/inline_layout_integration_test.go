@@ -74,16 +74,11 @@ func TestInlineLayoutIntegration(t *testing.T) {
 		t.Error("Expected inline boxes in line boxes")
 	}
 	
-	// Verify child layout boxes were created for inline content
-	if len(layoutRoot.Children) == 0 {
-		t.Error("Expected child layout boxes")
-	}
-	
-	// All children should be inline
-	for i, child := range layoutRoot.Children {
-		if !child.IsInline() {
-			t.Errorf("Child %d should be inline", i)
-		}
+	// With the inline layout fix, inline content is NOT created as child LayoutBoxes
+	// Instead, it's stored in LineBoxes
+	// This is the correct behavior to avoid duplication bugs
+	if len(layoutRoot.Children) != 0 {
+		t.Error("Expected no child layout boxes for inline-only content")
 	}
 }
 
@@ -209,9 +204,10 @@ func TestBlockWithInlineChildren(t *testing.T) {
 		t.Error("Paragraph should have line boxes")
 	}
 	
-	// Paragraph should have inline children
-	if len(pLayoutBox.Children) == 0 {
-		t.Error("Paragraph should have inline child layout boxes")
+	// With the inline layout fix, inline content is NOT created as child LayoutBoxes
+	// This is the correct behavior to avoid duplication bugs
+	if len(pLayoutBox.Children) != 0 {
+		t.Error("Paragraph should NOT have inline child layout boxes - content is in LineBoxes")
 	}
 }
 

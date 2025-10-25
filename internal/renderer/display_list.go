@@ -131,11 +131,62 @@ func (dlb *DisplayListBuilder) buildRecursive(layoutBox *LayoutBox, renderMap ma
 		return
 	}
 	
-	// Generate paint command based on node type
-	if renderNode.Type == NodeTypeText {
-		dlb.addTextCommand(layoutBox, renderNode, displayList)
-	} else if renderNode.Type == NodeTypeElement {
-		dlb.addElementCommand(layoutBox, renderNode, displayList)
+	// Check if this layout box has inline content (LineBoxes)
+	if len(layoutBox.LineBoxes) > 0 {
+		// Group inline boxes by NodeID to avoid duplicates
+		processedNodes := make(map[int64]bool)
+		
+		// Process inline boxes from LineBoxes
+		for _, lineBox := range layoutBox.LineBoxes {
+			for _, inlineBox := range lineBox.InlineBoxes {
+				// Skip if we've already processed this node
+				if processedNodes[inlineBox.NodeID] {
+					continue
+				}
+				processedNodes[inlineBox.NodeID] = true
+				
+				if inlineBox.IsText {
+					// Get the render node for this inline box
+					inlineRenderNode, inlineExists := renderMap[inlineBox.NodeID]
+					if !inlineExists {
+						continue
+					}
+					
+					// Get text style from node hierarchy
+					style := dlb.fontMetrics.GetTextStyleFromNode(inlineRenderNode)
+					
+					// Get font size from parent
+					fontSize := dlb.defaultFontSize
+					if inlineRenderNode.Parent != nil {
+						fontSize = dlb.fontMetrics.GetFontSize(inlineRenderNode.Parent.TagName)
+					}
+					
+					// Create paint command for the full text of the node
+					// Use the layout box dimensions for the entire element
+					cmd := &PaintCommand{
+						Type:     PaintText,
+						NodeID:   inlineBox.NodeID,
+						Box:      layoutBox.Box,
+						Text:     inlineRenderNode.Text,
+						FontSize: fontSize,
+						Bold:     style.Bold,
+						Italic:   style.Italic,
+					}
+					
+					displayList.AddCommand(cmd)
+				} else {
+					// Handle inline-block elements if needed
+					// For now, skip them as they should have their own LayoutBox
+				}
+			}
+		}
+	} else {
+		// No inline content - generate paint command based on node type
+		if renderNode.Type == NodeTypeText {
+			dlb.addTextCommand(layoutBox, renderNode, displayList)
+		} else if renderNode.Type == NodeTypeElement {
+			dlb.addElementCommand(layoutBox, renderNode, displayList)
+		}
 	}
 	
 	// Process children
