@@ -97,7 +97,7 @@ func (n *RenderNode) IsBlock() bool {
 		"h4": true, "h5": true, "h6": true, "ul": true, "ol": true,
 		"li": true, "body": true, "html": true, "header": true,
 		"footer": true, "section": true, "article": true, "aside": true,
-		"nav": true, "main": true,
+		"nav": true, "main": true, "pre": true, "blockquote": true,
 	}
 	return blockElements[n.TagName]
 }

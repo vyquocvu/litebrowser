@@ -143,6 +143,12 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 	case "br":
 		// Add a spacer for line break
 		*objects = append(*objects, widget.NewLabel(""))
+	case "code":
+		cr.renderCode(node, objects)
+	case "pre":
+		cr.renderPre(node, objects)
+	case "blockquote":
+		cr.renderBlockquote(node, objects)
 	case "span", "strong", "em", "b", "i":
 		// Inline elements - render children
 		for _, child := range node.Children {
@@ -334,6 +340,51 @@ func (cr *CanvasRenderer) renderListItem(node *RenderNode, objects *[]fyne.Canva
 	*objects = append(*objects, label)
 }
 
+// renderCode renders code elements with monospace styling
+func (cr *CanvasRenderer) renderCode(node *RenderNode, objects *[]fyne.CanvasObject) {
+	text := cr.extractText(node)
+	if text == "" {
+		return
+	}
+
+	label := widget.NewLabel(text)
+	label.Wrapping = fyne.TextWrapWord
+	label.TextStyle = fyne.TextStyle{Monospace: true}
+
+	*objects = append(*objects, label)
+}
+
+// renderPre renders pre elements with monospace styling and preserved whitespace
+func (cr *CanvasRenderer) renderPre(node *RenderNode, objects *[]fyne.CanvasObject) {
+	// For pre elements, we want to preserve whitespace and newlines
+	// Extract text without trimming
+	text := cr.extractTextPreserveWhitespace(node)
+	if text == "" {
+		return
+	}
+
+	label := widget.NewLabel(text)
+	label.Wrapping = fyne.TextWrapOff // Pre elements typically don't wrap
+	label.TextStyle = fyne.TextStyle{Monospace: true}
+
+	*objects = append(*objects, label)
+}
+
+// renderBlockquote renders blockquote elements
+func (cr *CanvasRenderer) renderBlockquote(node *RenderNode, objects *[]fyne.CanvasObject) {
+	text := cr.extractText(node)
+	if text == "" {
+		return
+	}
+
+	// Add visual indication of quote (e.g., with prefix)
+	label := widget.NewLabel("❝ " + text)
+	label.Wrapping = fyne.TextWrapWord
+	label.TextStyle = fyne.TextStyle{Italic: true}
+
+	*objects = append(*objects, label)
+}
+
 // renderImage renders img elements
 func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasObject) {
 	alt, hasAlt := node.GetAttribute("alt")
@@ -450,6 +501,30 @@ func (cr *CanvasRenderer) extractTextRecursive(node *RenderNode, builder *string
 
 	for _, child := range node.Children {
 		cr.extractTextRecursive(child, builder)
+	}
+}
+
+// extractTextPreserveWhitespace extracts text content while preserving whitespace and newlines
+// This is used for <pre> elements where whitespace formatting is significant
+func (cr *CanvasRenderer) extractTextPreserveWhitespace(node *RenderNode) string {
+	var text strings.Builder
+	cr.extractTextPreserveWhitespaceRecursive(node, &text)
+	return text.String()
+}
+
+// extractTextPreserveWhitespaceRecursive recursively extracts text without trimming whitespace
+func (cr *CanvasRenderer) extractTextPreserveWhitespaceRecursive(node *RenderNode, builder *strings.Builder) {
+	if node == nil {
+		return
+	}
+
+	if node.Type == NodeTypeText {
+		// Don't trim whitespace for pre elements
+		builder.WriteString(node.Text)
+	}
+
+	for _, child := range node.Children {
+		cr.extractTextPreserveWhitespaceRecursive(child, builder)
 	}
 }
 
