@@ -8,6 +8,7 @@ import (
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
 
+	"github.com/vyquocvu/goosie/internal/css"
 	imageloader "github.com/vyquocvu/goosie/internal/image"
 )
 
@@ -19,6 +20,7 @@ type Renderer struct {
 	layoutEngine   *LayoutEngine
 	canvasRenderer *CanvasRenderer
 	imageLoader    *imageloader.Loader
+	stylesheet     *css.StyleSheet
 
 	// Cached trees for performance
 	currentRenderTree *RenderNode
@@ -52,6 +54,9 @@ func (r *Renderer) RenderHTML(htmlContent string) (fyne.CanvasObject, error) {
 		return nil, err
 	}
 
+	// Extract and parse CSS from <style> tags
+	r.stylesheet = extractAndParseCSS(doc)
+
 	// Find body element
 	bodyNode := findBodyNode(doc)
 	if bodyNode == nil {
@@ -64,6 +69,12 @@ func (r *Renderer) RenderHTML(htmlContent string) (fyne.CanvasObject, error) {
 	if renderTree == nil {
 		// Return empty container if no content
 		return r.canvasRenderer.Render(nil), nil
+	}
+
+	// Apply styles
+	if r.stylesheet != nil {
+		styleManager := NewStyleManager(r.stylesheet)
+		styleManager.ApplyStyles(renderTree)
 	}
 
 	// Perform layout
@@ -183,4 +194,36 @@ func (r *Renderer) SetNavigationCallback(callback NavigationCallback) {
 // SetCurrentURL sets the current page URL for resolving relative links
 func (r *Renderer) SetCurrentURL(url string) {
 	r.currentURL = url
+}
+
+// extractAndParseCSS finds all <style> tags, extracts their content, and parses it.
+func extractAndParseCSS(node *html.Node) *css.StyleSheet {
+	var cssContent string
+	var f func(*html.Node)
+	f = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == "style" {
+			for c := n.FirstChild; c != nil; c = c.NextSibling {
+				if c.Type == html.TextNode {
+					cssContent += c.Data
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			f(c)
+		}
+	}
+	f(node)
+
+	if cssContent == "" {
+		return &css.StyleSheet{}
+	}
+
+	parser := css.NewParser(cssContent)
+	stylesheet, err := parser.Parse()
+	if err != nil {
+		// For now, we'll just ignore CSS parsing errors.
+		// A more robust solution would involve logging or displaying an error.
+		return &css.StyleSheet{}
+	}
+	return stylesheet
 }
