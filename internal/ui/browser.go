@@ -75,6 +75,7 @@ func NewBrowser() *Browser {
 
 	// Create HTML renderer with canvas size
 	htmlRenderer := renderer.NewRenderer(1000, 700)
+	htmlRenderer.SetWindow(w)
 
 	// Create scroll container
 	contentScroll := container.NewScroll(contentBox)

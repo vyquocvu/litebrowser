@@ -19,7 +19,7 @@ type NavigationCallback func(url string)
 type Renderer struct {
 	layoutEngine   *LayoutEngine
 	canvasRenderer *CanvasRenderer
-	imageLoader    *imageloader.Loader
+	imageLoader    imageloader.Loader
 	stylesheet     *css.StyleSheet
 
 	// Cached trees for performance
