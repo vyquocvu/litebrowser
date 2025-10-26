@@ -8,25 +8,48 @@ import (
 	"github.com/vyquocvu/goosie/internal/renderer"
 )
 
+// fixedHeightLayout is a custom layout that sets a fixed height for a widget
+type fixedHeightLayout struct {
+	height float32
+}
+
+func (l *fixedHeightLayout) MinSize(objects []fyne.CanvasObject) fyne.Size {
+	if len(objects) == 0 {
+		return fyne.NewSize(0, l.height)
+	}
+	// Use the widget's minimum width but override the height
+	minSize := objects[0].MinSize()
+	return fyne.NewSize(minSize.Width, l.height)
+}
+
+func (l *fixedHeightLayout) Layout(objects []fyne.CanvasObject, size fyne.Size) {
+	if len(objects) == 0 {
+		return
+	}
+	// Position the widget to fill the width but constrain height
+	objects[0].Resize(fyne.NewSize(size.Width, l.height))
+	objects[0].Move(fyne.NewPos(0, 0))
+}
+
 // NavigationCallback is a function that is called when navigation is requested
 type NavigationCallback func(url string)
 
 // Browser represents the browser UI
 type Browser struct {
-	app            fyne.App
-	window         fyne.Window
-	contentBox     *widget.RichText
-	contentScroll  *container.Scroll
-	state          *BrowserState
-	urlEntry       *widget.Entry
-	backButton     *widget.Button
-	forwardButton  *widget.Button
-	refreshButton  *widget.Button
-	bookmarkButton *widget.Button
-	loadingSpinner *widget.ProgressBarInfinite
-	loadingLabel   *widget.Label
-	onNavigate     NavigationCallback
-	htmlRenderer   *renderer.Renderer
+	app                 fyne.App
+	window              fyne.Window
+	contentBox          *widget.RichText
+	contentScroll       *container.Scroll
+	state               *BrowserState
+	urlEntry            *widget.Entry
+	backButton          *widget.Button
+	forwardButton       *widget.Button
+	refreshButton       *widget.Button
+	bookmarkButton      *widget.Button
+	loadingBar          *widget.ProgressBarInfinite
+	loadingBarContainer *fyne.Container
+	onNavigate          NavigationCallback
+	htmlRenderer        *renderer.Renderer
 }
 
 // window interface to allow testing
@@ -56,21 +79,23 @@ func NewBrowser() *Browser {
 	// Create scroll container
 	contentScroll := container.NewScroll(contentBox)
 
-	// Create loading indicator (initially hidden)
-	loadingSpinner := widget.NewProgressBarInfinite()
-	loadingSpinner.Hide()
-	loadingLabel := widget.NewLabel("Loading...")
-	loadingLabel.Hide()
+	// Create thin, full-width loading progress bar with 5px height (initially hidden)
+	loadingBar := widget.NewProgressBarInfinite()
+	loadingBar.Hide()
+
+	// Wrap the progress bar in a container with fixed height of 5px
+	loadingBarContainer := container.New(&fixedHeightLayout{height: 5}, loadingBar)
+	loadingBarContainer.Hide()
 
 	browser := &Browser{
-		app:            a,
-		window:         w,
-		contentBox:     contentBox,
-		contentScroll:  contentScroll,
-		state:          state,
-		htmlRenderer:   htmlRenderer,
-		loadingSpinner: loadingSpinner,
-		loadingLabel:   loadingLabel,
+		app:                 a,
+		window:              w,
+		contentBox:          contentBox,
+		contentScroll:       contentScroll,
+		state:               state,
+		htmlRenderer:        htmlRenderer,
+		loadingBar:          loadingBar,
+		loadingBarContainer: loadingBarContainer,
 	}
 
 	return browser
@@ -137,12 +162,9 @@ func (b *Browser) Show() {
 		b.urlEntry,
 	)
 
-	// Create loading indicator bar
-	loadingBar := container.NewHBox(b.loadingSpinner, b.loadingLabel)
-
-	// Create main layout with loading indicator
+	// Create main layout with 5px height loading bar
 	content := container.NewBorder(
-		container.NewVBox(navBar, loadingBar),
+		container.NewVBox(navBar, b.loadingBarContainer),
 		nil, nil, nil,
 		b.contentScroll,
 	)
@@ -263,9 +285,9 @@ func (b *Browser) GetHistory() []string {
 func (b *Browser) ShowLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingSpinner.Show()
-		b.loadingLabel.Show()
-		b.loadingSpinner.Start()
+		b.loadingBarContainer.Show()
+		b.loadingBar.Show()
+		b.loadingBar.Start()
 	})
 }
 
@@ -273,9 +295,9 @@ func (b *Browser) ShowLoading() {
 func (b *Browser) HideLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingSpinner.Stop()
-		b.loadingSpinner.Hide()
-		b.loadingLabel.Hide()
+		b.loadingBar.Stop()
+		b.loadingBar.Hide()
+		b.loadingBarContainer.Hide()
 	})
 }
 
