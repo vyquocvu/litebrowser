@@ -23,8 +23,7 @@ type Browser struct {
 	forwardButton  *widget.Button
 	refreshButton  *widget.Button
 	bookmarkButton *widget.Button
-	loadingSpinner *widget.ProgressBarInfinite
-	loadingLabel   *widget.Label
+	loadingBar     *widget.ProgressBarInfinite
 	onNavigate     NavigationCallback
 	htmlRenderer   *renderer.Renderer
 }
@@ -56,21 +55,18 @@ func NewBrowser() *Browser {
 	// Create scroll container
 	contentScroll := container.NewScroll(contentBox)
 
-	// Create loading indicator (initially hidden)
-	loadingSpinner := widget.NewProgressBarInfinite()
-	loadingSpinner.Hide()
-	loadingLabel := widget.NewLabel("Loading...")
-	loadingLabel.Hide()
+	// Create thin, full-width loading progress bar (initially hidden)
+	loadingBar := widget.NewProgressBarInfinite()
+	loadingBar.Hide()
 
 	browser := &Browser{
-		app:            a,
-		window:         w,
-		contentBox:     contentBox,
-		contentScroll:  contentScroll,
-		state:          state,
-		htmlRenderer:   htmlRenderer,
-		loadingSpinner: loadingSpinner,
-		loadingLabel:   loadingLabel,
+		app:           a,
+		window:        w,
+		contentBox:    contentBox,
+		contentScroll: contentScroll,
+		state:         state,
+		htmlRenderer:  htmlRenderer,
+		loadingBar:    loadingBar,
 	}
 
 	return browser
@@ -137,12 +133,9 @@ func (b *Browser) Show() {
 		b.urlEntry,
 	)
 
-	// Create loading indicator bar
-	loadingBar := container.NewHBox(b.loadingSpinner, b.loadingLabel)
-
-	// Create main layout with loading indicator
+	// Create main layout with thin, full-width loading bar
 	content := container.NewBorder(
-		container.NewVBox(navBar, loadingBar),
+		container.NewVBox(navBar, b.loadingBar),
 		nil, nil, nil,
 		b.contentScroll,
 	)
@@ -263,9 +256,8 @@ func (b *Browser) GetHistory() []string {
 func (b *Browser) ShowLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingSpinner.Show()
-		b.loadingLabel.Show()
-		b.loadingSpinner.Start()
+		b.loadingBar.Show()
+		b.loadingBar.Start()
 	})
 }
 
@@ -273,9 +265,8 @@ func (b *Browser) ShowLoading() {
 func (b *Browser) HideLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingSpinner.Stop()
-		b.loadingSpinner.Hide()
-		b.loadingLabel.Hide()
+		b.loadingBar.Stop()
+		b.loadingBar.Hide()
 	})
 }
 
