@@ -83,6 +83,9 @@ The canvas renderer converts the laid-out render tree into Fyne canvas objects.
 - **List Items** (li): Bullet points with indentation
 - **Images** (img): Placeholder rendering with alt text
 - **Inline Elements** (span, strong, em, b, i): Styled text
+- **Code** (code): Inline code with monospace font
+- **Preformatted Text** (pre): Preformatted text blocks with monospace font and preserved whitespace
+- **Blockquotes** (blockquote): Quote blocks with italic styling
 - **Line Breaks** (br): Spacing elements
 
 ### 4. Main Renderer (`renderer.go`)
@@ -162,14 +165,16 @@ renderer.SetSize(newWidth, newHeight)
 - **Text Blocks**: `p`, `div`, `span`
 - **Lists**: `ul`, `ol`, `li`
 - **Links**: `a` (with href attribute)
-- **Images**: `img` (placeholder rendering)
+- **Images**: `img` (with image loading support)
 - **Text Styling**: `strong`, `b`, `em`, `i`
+- **Code**: `code` (inline code with monospace font)
+- **Preformatted Text**: `pre` (preformatted blocks with monospace font)
+- **Blockquotes**: `blockquote` (quote blocks with italic styling)
 - **Line Breaks**: `br`
 
 ### Partially Supported Elements
 
-- **Images**: Currently shows placeholders; full image loading not implemented
-- **Links**: Displayed but click handling requires integration with navigation system
+- **Links**: Clickable links with navigation callback support
 - **Inline Elements**: Simplified inline layout (mostly vertical stacking)
 
 ### Not Yet Supported
