@@ -50,7 +50,7 @@ func (p *Parser) parseSelectors() ([]Selector, error) {
 		if isIdentifierChar(p.peek()) {
 			selector.TagName = p.consumeIdentifier()
 		}
-		// Then, parse any classes and IDs.
+		// Then, parse any classes, IDs, and pseudo-classes.
 		for {
 			if p.peek() == '#' {
 				p.consumeChar('#')
@@ -58,6 +58,9 @@ func (p *Parser) parseSelectors() ([]Selector, error) {
 			} else if p.peek() == '.' {
 				p.consumeChar('.')
 				selector.Classes = append(selector.Classes, p.consumeIdentifier())
+			} else if p.peek() == ':' {
+				p.consumeChar(':')
+				selector.PseudoClass = p.consumeIdentifier()
 			} else {
 				break
 			}

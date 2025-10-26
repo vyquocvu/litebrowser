@@ -1,6 +1,8 @@
 package renderer
 
 import (
+	"fmt"
+	"image/color"
 	"strconv"
 	"strings"
 
@@ -23,6 +25,16 @@ func (sm *StyleManager) ApplyStyles(node *RenderNode) {
 		return
 	}
 
+	if node.ComputedStyle == nil {
+		node.ComputedStyle = &Style{}
+	}
+
+	// Inherit styles from parent
+	if node.Parent != nil && node.Parent.ComputedStyle != nil {
+		node.ComputedStyle.Color = node.Parent.ComputedStyle.Color
+		node.ComputedStyle.FontSize = node.Parent.ComputedStyle.FontSize
+	}
+
 	sm.applyMatchingRules(node)
 
 	for _, child := range node.Children {
@@ -31,15 +43,11 @@ func (sm *StyleManager) ApplyStyles(node *RenderNode) {
 }
 
 func (sm *StyleManager) applyMatchingRules(node *RenderNode) {
-	if node.ComputedStyle == nil {
-		node.ComputedStyle = &Style{}
-	}
-
 	for _, rule := range sm.stylesheet.Rules {
 		for _, selector := range rule.Selectors {
 			if sm.matches(selector, node) {
 				for _, decl := range rule.Declarations {
-					sm.applyDeclaration(node.ComputedStyle, decl)
+					sm.applyDeclaration(node, decl)
 				}
 			}
 		}
@@ -75,25 +83,56 @@ func (sm *StyleManager) matches(selector css.Selector, node *RenderNode) bool {
 			}
 		}
 	}
+	if selector.PseudoClass != "" {
+		switch selector.PseudoClass {
+		case "link", "visited":
+			if node.TagName != "a" {
+				return false
+			}
+		default:
+			return false // Unsupported pseudo-class
+		}
+	}
 	return true
 }
 
-func (sm *StyleManager) applyDeclaration(style *Style, decl css.Declaration) {
+func (sm *StyleManager) applyDeclaration(node *RenderNode, decl css.Declaration) {
+	style := node.ComputedStyle
 	switch decl.Property {
 	case "display":
 		style.Display = decl.Value
 	case "font-size":
-		if val, err := parseFontSize(decl.Value); err == nil {
+		parentFontSize := float32(16.0) // Default font size
+		if node.Parent != nil && node.Parent.ComputedStyle != nil && node.Parent.ComputedStyle.FontSize > 0 {
+			parentFontSize = node.Parent.ComputedStyle.FontSize
+		}
+		if val, err := parseFontSize(decl.Value, parentFontSize); err == nil {
 			style.FontSize = val
 		}
 	case "font-weight":
 		style.FontWeight = decl.Value
 	case "color":
-		style.Color = decl.Value
+		if val, err := parseColor(decl.Value); err == nil {
+			style.Color = val
+		}
+	case "background":
+		if val, err := parseColor(decl.Value); err == nil {
+			style.BackgroundColor = val
+		}
+	case "width":
+		style.Width = decl.Value
+	case "margin":
+		style.Margin = decl.Value
+	case "font-family":
+		style.FontFamily = decl.Value
+	case "opacity":
+		if val, err := strconv.ParseFloat(decl.Value, 32); err == nil {
+			style.Opacity = float32(val)
+		}
 	}
 }
 
-func parseFontSize(value string) (float32, error) {
+func parseFontSize(value string, parentFontSize float32) (float32, error) {
 	if strings.HasSuffix(value, "px") {
 		val, err := strconv.ParseFloat(strings.TrimSuffix(value, "px"), 32)
 		if err != nil {
@@ -101,6 +140,40 @@ func parseFontSize(value string) (float32, error) {
 		}
 		return float32(val), nil
 	}
-	// For now, we only support px. Other units can be added later.
-	return 0, &strconv.NumError{}
+	if strings.HasSuffix(value, "em") {
+		val, err := strconv.ParseFloat(strings.TrimSuffix(value, "em"), 32)
+		if err != nil {
+			return 0, err
+		}
+		return float32(val) * parentFontSize, nil
+	}
+	return 0, fmt.Errorf("unsupported font size unit")
+}
+
+func parseColor(value string) (color.Color, error) {
+	if strings.HasPrefix(value, "#") {
+		return parseHexColor(value)
+	}
+	// Add support for other color formats like rgb() later
+	return color.Black, fmt.Errorf("unsupported color format")
+}
+
+func parseHexColor(hex string) (color.Color, error) {
+	hex = strings.TrimPrefix(hex, "#")
+	if len(hex) == 3 {
+		hex = string([]byte{hex[0], hex[0], hex[1], hex[1], hex[2], hex[2]})
+	}
+	if len(hex) != 6 {
+		return nil, fmt.Errorf("invalid hex color length")
+	}
+	rgb, err := strconv.ParseUint(hex, 16, 32)
+	if err != nil {
+		return nil, err
+	}
+	return color.RGBA{
+		R: uint8(rgb >> 16),
+		G: uint8(rgb >> 8),
+		B: uint8(rgb),
+		A: 255,
+	}, nil
 }

@@ -14,9 +14,10 @@ type Rule struct {
 // Selector represents a CSS selector.
 // For now, we'll support simple selectors.
 type Selector struct {
-	TagName string
-	ID      string
-	Classes []string
+	TagName     string
+	ID          string
+	Classes     []string
+	PseudoClass string
 }
 
 // Declaration represents a CSS property-value pair.
