@@ -196,6 +196,11 @@ func (r *Renderer) SetCurrentURL(url string) {
 	r.currentURL = url
 }
 
+// SetWindow sets the Fyne window for the renderer
+func (r *Renderer) SetWindow(w fyne.Window) {
+	r.canvasRenderer.SetWindow(w)
+}
+
 // extractAndParseCSS finds all <style> tags, extracts their content, and parses it.
 func extractAndParseCSS(node *html.Node) *css.StyleSheet {
 	var cssContent string
