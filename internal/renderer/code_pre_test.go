@@ -7,6 +7,23 @@ import (
 	"golang.org/x/net/html"
 )
 
+// findElementByTag is a helper function to find an HTML element by tag name
+func findElementByTag(doc *html.Node, tagName string) *html.Node {
+	var result *html.Node
+	var find func(*html.Node)
+	find = func(n *html.Node) {
+		if n.Type == html.ElementNode && n.Data == tagName {
+			result = n
+			return
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			find(c)
+		}
+	}
+	find(doc)
+	return result
+}
+
 func TestRenderCodeElement(t *testing.T) {
 	htmlContent := `<code>const x = 42;</code>`
 	doc, err := html.Parse(strings.NewReader(htmlContent))
@@ -14,20 +31,7 @@ func TestRenderCodeElement(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the code element
-	var codeHTMLNode *html.Node
-	var findCode func(*html.Node)
-	findCode = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "code" {
-			codeHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findCode(c)
-		}
-	}
-	findCode(doc)
-	
+	codeHTMLNode := findElementByTag(doc, "code")
 	if codeHTMLNode == nil {
 		t.Fatal("Code HTML node not found")
 	}
@@ -51,20 +55,7 @@ func TestRenderPreElement(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the pre element
-	var preHTMLNode *html.Node
-	var findPre func(*html.Node)
-	findPre = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "pre" {
-			preHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findPre(c)
-		}
-	}
-	findPre(doc)
-	
+	preHTMLNode := findElementByTag(doc, "pre")
 	if preHTMLNode == nil {
 		t.Fatal("Pre HTML node not found")
 	}
@@ -91,20 +82,7 @@ func TestRenderBlockquoteElement(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the blockquote element
-	var blockquoteHTMLNode *html.Node
-	var findBlockquote func(*html.Node)
-	findBlockquote = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "blockquote" {
-			blockquoteHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findBlockquote(c)
-		}
-	}
-	findBlockquote(doc)
-	
+	blockquoteHTMLNode := findElementByTag(doc, "blockquote")
 	if blockquoteHTMLNode == nil {
 		t.Fatal("Blockquote HTML node not found")
 	}
@@ -150,20 +128,7 @@ func TestCanvasRendererCodeElements(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the code element
-	var codeHTMLNode *html.Node
-	var findCode func(*html.Node)
-	findCode = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "code" {
-			codeHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findCode(c)
-		}
-	}
-	findCode(doc)
-	
+	codeHTMLNode := findElementByTag(doc, "code")
 	if codeHTMLNode == nil {
 		t.Fatal("Code HTML node not found")
 	}
@@ -191,20 +156,7 @@ Line 2</pre>`
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the pre element
-	var preHTMLNode *html.Node
-	var findPre func(*html.Node)
-	findPre = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "pre" {
-			preHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findPre(c)
-		}
-	}
-	findPre(doc)
-	
+	preHTMLNode := findElementByTag(doc, "pre")
 	if preHTMLNode == nil {
 		t.Fatal("Pre HTML node not found")
 	}
@@ -231,20 +183,7 @@ func TestCanvasRendererBlockquoteElements(t *testing.T) {
 		t.Fatalf("Failed to parse HTML: %v", err)
 	}
 	
-	// Find the blockquote element
-	var blockquoteHTMLNode *html.Node
-	var findBlockquote func(*html.Node)
-	findBlockquote = func(n *html.Node) {
-		if n.Type == html.ElementNode && n.Data == "blockquote" {
-			blockquoteHTMLNode = n
-			return
-		}
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			findBlockquote(c)
-		}
-	}
-	findBlockquote(doc)
-	
+	blockquoteHTMLNode := findElementByTag(doc, "blockquote")
 	if blockquoteHTMLNode == nil {
 		t.Fatal("Blockquote HTML node not found")
 	}
