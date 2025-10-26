@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for the Goosie project. The roadmap is organized into phases based on priority and complexity.
 
-## Current Status (v0.2.0)
+## Current Status (v0.3.0)
 
 ✅ **Core Foundation**
 - HTTP fetching with Go's net/http
@@ -22,27 +22,20 @@ This document outlines the planned features and improvements for the Goosie proj
 - Bookmark management (add/remove/list with visual indicators)
 - Thread-safe state management for concurrent operations
 
-## Phase 1: Essential Browser Features (v0.3.0)
+✅ **HTML Rendering**
+- Canvas-based HTML renderer module
+- Render tree for DOM representation
+- Layout engine with box model calculations
+- True inline layout engine with line boxes
+- Proper text wrapping and line breaking
+- White space handling (normal, nowrap, pre, pre-wrap, pre-line)
+- Vertical alignment for inline elements
+- Inline-block element support
+- Support for core HTML elements (h1-h6, p, div, ul, ol, li, a, img)
+- Text styling support (bold, italic)
+- HTML hierarchy preservation
 
-### Navigation
-- [x] URL bar for entering web addresses
-- [x] Back/Forward navigation buttons
-- [x] Refresh/Reload button
-- [x] Navigation history
-- [x] Bookmark management (add/remove/list)
-
-### HTML Rendering (v0.2.1)
-- [x] Canvas-based HTML renderer module
-- [x] Render tree for DOM representation
-- [x] Layout engine with box model calculations
-- [x] **True inline layout engine with line boxes (Issue #8)**
-- [x] **Proper text wrapping and line breaking**
-- [x] **White space handling (normal, nowrap, pre, pre-wrap, pre-line)**
-- [x] **Vertical alignment for inline elements**
-- [x] **Inline-block element support**
-- [x] Support for core HTML elements (h1-h6, p, div, ul, ol, li, a, img)
-- [x] Text styling support (bold, italic)
-- [x] HTML hierarchy preservation
+## Phase 1: Essential Browser Features (v0.4.0)
 
 ### UI Improvements
 - [ ] Status bar showing loading progress
@@ -57,7 +50,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Form elements rendering (input, button, textarea)
 - [ ] Table rendering
 
-## Phase 2: Enhanced JavaScript Support (v0.3.0)
+## Phase 2: Enhanced JavaScript Support (v0.5.0)
 
 ### DOM API Extensions
 - [ ] `document.querySelector()` and `querySelectorAll()`
@@ -81,7 +74,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Console panel in the browser UI
 - [ ] JavaScript error reporting in UI
 
-## Phase 3: Advanced Features (v0.4.0)
+## Phase 3: Advanced Features (v0.6.0)
 
 ### CSS Support
 - [ ] Full CSS parser
@@ -106,7 +99,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Memory optimization
 - [ ] Lazy loading for images
 
-## Phase 4: Developer Tools (v0.5.0)
+## Phase 4: Developer Tools (v0.7.0)
 
 ### Debugging Tools
 - [ ] Inspect element functionality
