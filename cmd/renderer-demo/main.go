@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/vyquocvu/litebrowser/internal/renderer"
+	"github.com/vyquocvu/goosie/internal/renderer"
 )
 
 func main() {
@@ -25,7 +25,7 @@ func main() {
 			html: `
 				<html>
 				<body>
-					<h1>Welcome to Litebrowser</h1>
+					<h1>Welcome to Goosie</h1>
 					<p>This is a simple HTML renderer demonstration.</p>
 				</body>
 				</html>

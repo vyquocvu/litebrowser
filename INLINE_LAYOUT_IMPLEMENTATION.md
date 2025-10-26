@@ -1,6 +1,6 @@
 # Inline Layout Engine
 
-This document describes the inline layout engine implementation in the litebrowser renderer.
+This document describes the inline layout engine implementation in the Goosie renderer.
 
 ## Overview
 
@@ -231,4 +231,4 @@ go test ./internal/renderer/... -run Inline -v
 
 ## License
 
-This module is part of the litebrowser project and follows the same license.
+This module is part of the Goosie project and follows the same license.

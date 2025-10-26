@@ -1,4 +1,4 @@
-# litebrowser
+# Goosie
 
 A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GUI framework), and x/net/html (HTML parser).
 
@@ -23,7 +23,7 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
 - **JavaScript Runtime**: Execute JavaScript with Goja engine
   - `console.log()` support
   - `document.getElementById()` support
-- **GUI**: Display rendered content in a Fyne window titled "Litebrowser"
+- **GUI**: Display rendered content in a Fyne window titled "Goosie"
 - **Navigation**: Full-featured navigation system
   - URL bar for entering web addresses
   - Back/Forward navigation buttons with proper state management
@@ -36,7 +36,7 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
 The project follows a clean architecture with the following structure:
 
 ```
-litebrowser/
+goosie/
 ├── cmd/
 │   ├── browser/          # Main GUI browser application
 │   │   └── main.go
@@ -95,8 +95,8 @@ xcode-select --install
 
 ```bash
 # Clone the repository
-git clone https://github.com/vyquocvu/litebrowser.git
-cd litebrowser
+git clone https://github.com/vyquocvu/goosie.git
+cd goosie
 
 # Install dependencies
 go mod download
@@ -119,7 +119,7 @@ go run ./cmd/browser
 ```
 
 This will:
-1. Open a window titled "Litebrowser" with navigation controls
+1. Open a window titled "Goosie" with navigation controls
 2. Display a welcome message
 3. Allow you to enter a URL in the address bar
 4. Fetch and display web pages with async loading (UI stays responsive)
@@ -203,7 +203,7 @@ To add new UI features, edit `internal/ui/browser.go`:
 
 ## Performance
 
-Litebrowser includes advanced performance optimizations for smooth scrolling and high frame rates:
+Goosie includes advanced performance optimizations for smooth scrolling and high frame rates:
 
 - **Viewport-based rendering**: 30x faster than traditional full-page rendering
 - **Display list caching**: Eliminates repeated DOM traversal

@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/dop251/goja"
-	"github.com/vyquocvu/litebrowser/internal/dom"
+	"github.com/vyquocvu/goosie/internal/dom"
 )
 
 // Runtime wraps the Goja JavaScript runtime

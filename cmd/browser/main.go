@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/vyquocvu/litebrowser/internal/dom"
-	"github.com/vyquocvu/litebrowser/internal/js"
-	"github.com/vyquocvu/litebrowser/internal/net"
-	"github.com/vyquocvu/litebrowser/internal/ui"
+	"github.com/vyquocvu/goosie/internal/dom"
+	"github.com/vyquocvu/goosie/internal/js"
+	"github.com/vyquocvu/goosie/internal/net"
+	"github.com/vyquocvu/goosie/internal/ui"
 )
 
 func main() {
@@ -59,7 +59,7 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 	go func() {
 		// Fetch the page in background
 		html, err := fetcher.FetchWithContext(ctx, url)
-		
+
 		// Check if context was cancelled
 		if ctx.Err() != nil {
 			log.Printf("Page load cancelled for: %s", url)
@@ -98,7 +98,7 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 // updateUIWithError updates the UI with an error message
 func updateUIWithError(browser *ui.Browser, err error) {
 	log.Printf("Error loading page: %v", err)
-	
+
 	// Fyne widgets are thread-safe and can be updated from any goroutine
 	browser.SetContent("Error loading page: " + err.Error())
 	browser.HideLoading()

@@ -9,8 +9,8 @@ import (
 	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	
-	imageloader "github.com/vyquocvu/litebrowser/internal/image"
+
+	imageloader "github.com/vyquocvu/goosie/internal/image"
 )
 
 // CanvasRenderer renders a render tree onto a Fyne canvas
@@ -27,16 +27,16 @@ type CanvasRenderer struct {
 	cachedDisplayList *DisplayList
 	cachedLayoutRoot  *LayoutBox
 	cachedRenderRoot  *RenderNode
-	
+
 	// fontMetrics provides accurate text measurement
 	fontMetrics *FontMetrics
-	
+
 	// Navigation callback for link clicks
 	onNavigate NavigationCallback
-	
+
 	// Current page URL for resolving relative links
 	baseURL string
-	
+
 	// Image loader for loading and caching images
 	imageLoader *imageloader.Loader
 }
@@ -207,11 +207,11 @@ func (cr *CanvasRenderer) renderLink(node *RenderNode, objects *[]fyne.CanvasObj
 	if hasHref && href != "" {
 		// Resolve URL (absolute or relative)
 		resolvedURL := cr.resolveURL(href)
-		
+
 		// Note: Link target attribute (_blank, _self, etc.) is available via node.GetAttribute("target")
 		// but not currently implemented as the browser doesn't support tabs yet.
 		// This is planned for Phase 1 UI Improvements (see ROADMAP.md).
-		
+
 		// Parse URL to create a proper Fyne URL object
 		parsedURL, err := url.Parse(resolvedURL)
 		if err != nil {
@@ -221,11 +221,11 @@ func (cr *CanvasRenderer) renderLink(node *RenderNode, objects *[]fyne.CanvasObj
 			*objects = append(*objects, label)
 			return
 		}
-		
+
 		// Create a clickable hyperlink widget
 		link := widget.NewHyperlink(text, parsedURL)
 		link.Wrapping = fyne.TextWrapWord
-		
+
 		// Override the default tap handler to use our navigation callback
 		if cr.onNavigate != nil {
 			// Create a custom tappable widget
@@ -249,24 +249,24 @@ func (cr *CanvasRenderer) resolveURL(href string) string {
 	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
 		return href
 	}
-	
+
 	// If no base URL, return href as-is
 	if cr.baseURL == "" {
 		return href
 	}
-	
+
 	// Parse base URL
 	baseURL, err := url.Parse(cr.baseURL)
 	if err != nil {
 		return href
 	}
-	
+
 	// Parse relative href
 	relURL, err := url.Parse(href)
 	if err != nil {
 		return href
 	}
-	
+
 	// Resolve relative URL against base
 	resolved := baseURL.ResolveReference(relURL)
 	return resolved.String()
@@ -358,7 +358,7 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 	// Try to load the image if loader is available
 	if cr.imageLoader != nil {
 		imageData, err := cr.imageLoader.Load(resolvedSrc)
-		
+
 		if err == nil && imageData != nil {
 			switch imageData.State {
 			case imageloader.StateLoaded:
@@ -366,7 +366,7 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 				img := canvas.NewImageFromImage(imageData.Image)
 				img.FillMode = canvas.ImageFillOriginal
 				img.SetMinSize(fyne.NewSize(float32(imageData.Width), float32(imageData.Height)))
-				
+
 				// Add alt text below the image if available
 				if hasAlt && alt != "" {
 					altLabel := widget.NewLabel(alt)
@@ -376,7 +376,7 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 					*objects = append(*objects, img)
 				}
 				return
-				
+
 			case imageloader.StateError:
 				// Image failed to load - show error with alt text
 				displayText := "[Image Load Failed"
@@ -388,7 +388,7 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 				label.Wrapping = fyne.TextWrapWord
 				*objects = append(*objects, label)
 				return
-				
+
 			case imageloader.StateLoading:
 				// Image is loading - show loading placeholder
 				displayText := "[Loading Image"
@@ -398,11 +398,11 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 				displayText += "]"
 				label := widget.NewLabel(displayText)
 				label.Wrapping = fyne.TextWrapWord
-				
+
 				// Show a gray rectangle as loading indicator
 				rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 				rect.SetMinSize(fyne.NewSize(100, 100))
-				
+
 				*objects = append(*objects, container.NewVBox(rect, label))
 				return
 			}
@@ -531,7 +531,7 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		if cr.imageLoader != nil && cmd.ImageSrc != "" {
 			resolvedSrc := cr.resolveURL(cmd.ImageSrc)
 			imageData, err := cr.imageLoader.Load(resolvedSrc)
-			
+
 			if err == nil && imageData != nil {
 				switch imageData.State {
 				case imageloader.StateLoaded:
@@ -539,7 +539,7 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 					img := canvas.NewImageFromImage(imageData.Image)
 					img.FillMode = canvas.ImageFillOriginal
 					img.SetMinSize(fyne.NewSize(float32(imageData.Width), float32(imageData.Height)))
-					
+
 					// Add alt text below the image if available
 					if cmd.ImageAlt != "" {
 						altLabel := widget.NewLabel(cmd.ImageAlt)
@@ -549,7 +549,7 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 						*objects = append(*objects, img)
 					}
 					return
-					
+
 				case imageloader.StateError:
 					// Image failed to load - show error with alt text
 					displayText := "[Image Load Failed"
@@ -561,7 +561,7 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 					label.Wrapping = fyne.TextWrapWord
 					*objects = append(*objects, label)
 					return
-					
+
 				case imageloader.StateLoading:
 					// Image is loading - show loading placeholder
 					displayText := "[Loading Image"
@@ -571,16 +571,16 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 					displayText += "]"
 					label := widget.NewLabel(displayText)
 					label.Wrapping = fyne.TextWrapWord
-					
+
 					rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 					rect.SetMinSize(fyne.NewSize(100, 100))
-					
+
 					*objects = append(*objects, container.NewVBox(rect, label))
 					return
 				}
 			}
 		}
-		
+
 		// Fallback: Render image placeholder
 		displayText := "[Image"
 		if cmd.ImageSrc != "" {
@@ -598,16 +598,16 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		rect.SetMinSize(fyne.NewSize(100, 100))
 
 		*objects = append(*objects, container.NewVBox(rect, label))
-		
+
 	case PaintLink:
 		// Render clickable link
 		if cmd.LinkText == "" {
 			return
 		}
-		
+
 		// Resolve URL (absolute or relative)
 		resolvedURL := cr.resolveURL(cmd.LinkURL)
-		
+
 		// Create a clickable hyperlink widget
 		if cr.onNavigate != nil {
 			// Create a custom tappable widget

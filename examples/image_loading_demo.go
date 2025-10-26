@@ -8,7 +8,7 @@ import (
 	"os"
 	"path/filepath"
 
-	imageloader "github.com/vyquocvu/litebrowser/internal/image"
+	imageloader "github.com/vyquocvu/goosie/internal/image"
 )
 
 // This example demonstrates the image loading and caching capabilities
@@ -89,7 +89,7 @@ func main() {
 	fmt.Println("Example 6: Cache Eviction Demo")
 	fmt.Println("-------------------------------")
 	smallLoader := imageloader.NewLoader(2) // Small cache
-	
+
 	// Create 3 test images
 	for i := 1; i <= 3; i++ {
 		imagePath := filepath.Join(tmpDir, fmt.Sprintf("image%d.png", i))
@@ -108,7 +108,7 @@ func main() {
 // createTestImage creates a simple colored test image
 func createTestImage(path string, width, height int) error {
 	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	
+
 	// Create a gradient pattern
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {

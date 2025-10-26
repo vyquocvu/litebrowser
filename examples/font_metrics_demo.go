@@ -1,14 +1,14 @@
-package main
+package font_metrics_demo
 
 import (
 	"fmt"
-	"github.com/vyquocvu/litebrowser/internal/renderer"
+	"github.com/vyquocvu/goosie/internal/renderer"
 	"fyne.io/fyne/v2"
 )
 
 // This example demonstrates the accurate text measurement capabilities
 // using the new FontMetrics module.
-func main() {
+func RunDemo() {
 	fmt.Println("Font Metrics Demo")
 	fmt.Println("=================\n")
 

@@ -1,6 +1,6 @@
 # Clickable Links with Navigation Integration - Implementation Summary
 
-This document describes the implementation of clickable anchor tags with full navigation integration in the Litebrowser project.
+This document describes the implementation of clickable anchor tags with full navigation integration in the Goosie project.
 
 ## Overview
 

@@ -1,6 +1,6 @@
 # HTML Renderer Implementation Summary
 
-This document summarizes the implementation of the canvas-based HTML renderer module for the litebrowser project.
+This document summarizes the implementation of the canvas-based HTML renderer module for the Goosie project.
 
 ## Overview
 
@@ -166,7 +166,7 @@ The renderer is designed to support future features:
 ### Tests Pass
 ```bash
 $ go test ./internal/renderer/...
-ok  	github.com/vyquocvu/litebrowser/internal/renderer	0.007s	coverage: 77.0% of statements
+ok  	github.com/vyquocvu/goosie/internal/renderer	0.007s	coverage: 77.0% of statements
 ```
 
 ### Demo Works

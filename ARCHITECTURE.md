@@ -1,4 +1,8 @@
-# Litebrowser Architecture Diagram
+# Goosie Browser Architecture
+
+## Overview
+
+Goosie's browser architecture uses a modern multi-tree rendering system that separates concerns between DOM parsing, styling, layout computation, and painting. This design enables maintainable, testable, and performant rendering with support for incremental updates.
 
 ## Component Flow
 
@@ -61,7 +65,7 @@ User enters URL → Add to History → Fetch Page → Parse HTML → Render
 
 ### Initial Startup
 1. **GUI Browser** (`internal/ui/browser.go`)
-   - Creates Fyne window titled "Litebrowser"
+   - Creates Fyne window titled "Goosie"
    - Initializes navigation controls (URL bar, buttons)
    - Creates BrowserState for history/bookmarks
    - Displays welcome message
@@ -95,7 +99,6 @@ User enters URL → Add to History → Fetch Page → Parse HTML → Render
    - Hit testing for interactive elements
    - Renders to Fyne canvas objects
    - Supports headings, paragraphs, lists, links, images
-   - See [RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md) for detailed architecture
 
 6. **JavaScript Runtime** (`internal/js/runtime.go`)
    - Sets HTML content for DOM operations
@@ -112,14 +115,14 @@ User enters URL → Add to History → Fetch Page → Parse HTML → Render
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│ Litebrowser                                   [_][□][X]│
+│ Goosie                                       [_][□][X]│
 ├───────────────────────────────────────────────────────┤
-│ ← → ⟳ │ https://example.com                    │ ☆   │
+│ ← → ⟳ │ https://example.com                     │ ☆   │
 ├───────────────────────────────────────────────────────┤
 │                                                       │
 │  # Example Domain                                     │
 │                                                       │
-│  This domain is for use in illustrative              │
+│  This domain is for use in illustrative               │
 │  examples in documents. You may use this              │
 │  domain in literature without prior                   │
 │  coordination or asking for permission.               │
@@ -155,7 +158,7 @@ JS runtime initialized
 ✓ console.log() implementation
 ✓ document.getElementById() implementation
 ✓ GUI rendering with Fyne
-✓ Window titled "Litebrowser"
+✓ Window titled "Goosie"
 ✓ Body text extraction and markdown rendering
 ✓ JavaScript runtime initialization
 ✓ URL bar with navigation

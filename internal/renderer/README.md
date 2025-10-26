@@ -1,6 +1,6 @@
 # HTML Renderer Module
 
-The HTML renderer module provides canvas-based rendering capabilities for the litebrowser project. It parses HTML content, builds a render tree, performs layout calculations, and renders the content onto a Fyne canvas.
+The HTML renderer module provides canvas-based rendering capabilities for the Goosie project. It parses HTML content, builds a render tree, performs layout calculations, and renders the content onto a Fyne canvas.
 
 ## Architecture
 
@@ -108,7 +108,7 @@ The main renderer coordinates all components to provide a simple API.
 ### Basic Example
 
 ```go
-import "github.com/vyquocvu/litebrowser/internal/renderer"
+import "github.com/vyquocvu/goosie/internal/renderer"
 
 // Create renderer with canvas size
 htmlRenderer := renderer.NewRenderer(800, 600)
@@ -278,4 +278,4 @@ When extending the renderer:
 
 ## License
 
-This module is part of the litebrowser project and follows the same license.
+This module is part of the Goosie project and follows the same license.

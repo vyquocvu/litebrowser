@@ -7,8 +7,8 @@ import (
 	"fyne.io/fyne/v2/container"
 	"golang.org/x/net/html"
 	"golang.org/x/net/html/atom"
-	
-	imageloader "github.com/vyquocvu/litebrowser/internal/image"
+
+	imageloader "github.com/vyquocvu/goosie/internal/image"
 )
 
 // NavigationCallback is called when a link is clicked
@@ -23,10 +23,10 @@ type Renderer struct {
 	// Cached trees for performance
 	currentRenderTree *RenderNode
 	currentLayoutTree *LayoutBox
-	
+
 	// Navigation callback for link clicks
 	onNavigate NavigationCallback
-	
+
 	// Current page URL for resolving relative links
 	currentURL string
 }
@@ -36,7 +36,7 @@ func NewRenderer(width, height float32) *Renderer {
 	imageLoader := imageloader.NewLoader(100) // Cache up to 100 images
 	canvasRenderer := NewCanvasRenderer(width, height)
 	canvasRenderer.imageLoader = imageLoader
-	
+
 	return &Renderer{
 		layoutEngine:   NewLayoutEngine(width, height),
 		canvasRenderer: canvasRenderer,

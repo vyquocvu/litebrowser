@@ -1,6 +1,6 @@
 # Image Loading Implementation
 
-This document describes the implementation of image loading, decoding, and caching in the litebrowser project.
+This document describes the implementation of image loading, decoding, and caching in the Goosie project.
 
 ## Overview
 

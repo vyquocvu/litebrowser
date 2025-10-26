@@ -3,19 +3,19 @@ package main
 import (
 	"log"
 
-	"github.com/vyquocvu/litebrowser/internal/dom"
-	"github.com/vyquocvu/litebrowser/internal/js"
-	"github.com/vyquocvu/litebrowser/internal/net"
+	"github.com/vyquocvu/goosie/internal/dom"
+	"github.com/vyquocvu/goosie/internal/js"
+	"github.com/vyquocvu/goosie/internal/net"
 )
 
 func main() {
-	log.Println("=== Testing Litebrowser Components ===")
-	
+	log.Println("=== Testing Goosie Components ===")
+
 	// Test 1: Fetch example.com
 	log.Println("\n1. Testing HTTP Fetcher...")
 	fetcher := net.NewFetcher()
 	html, err := fetcher.Fetch("https://example.com")
-	
+
 	// If network is unavailable, use mock HTML for testing
 	if err != nil {
 		log.Printf("Network unavailable (%v), using mock HTML for testing", err)
@@ -49,7 +49,7 @@ func main() {
 	log.Println("\n3. Testing JavaScript Runtime...")
 	jsRuntime := js.NewRuntime()
 	jsRuntime.SetHTMLContent(html)
-	
+
 	// Test console.log
 	log.Println("\n4. Testing console.log...")
 	_, err = jsRuntime.RunScript(`console.log("JS runtime initialized");`)

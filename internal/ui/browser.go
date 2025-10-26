@@ -5,7 +5,7 @@ import (
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/widget"
-	"github.com/vyquocvu/litebrowser/internal/renderer"
+	"github.com/vyquocvu/goosie/internal/renderer"
 )
 
 // NavigationCallback is a function that is called when navigation is requested
@@ -40,12 +40,12 @@ type window interface {
 // NewBrowser creates a new browser UI
 func NewBrowser() *Browser {
 	a := app.New()
-	w := a.NewWindow("Litebrowser")
+	w := a.NewWindow("Goosie")
 
 	// Set window size
 	w.Resize(fyne.NewSize(1000, 700))
 
-	contentBox := widget.NewRichTextFromMarkdown("Welcome to Litebrowser! Enter a URL above to start browsing.")
+	contentBox := widget.NewRichTextFromMarkdown("Welcome to Goosie! Enter a URL above to start browsing.")
 	contentBox.Wrapping = fyne.TextWrapWord
 
 	state := NewBrowserState()

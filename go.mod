@@ -1,4 +1,4 @@
-module github.com/vyquocvu/litebrowser
+module github.com/vyquocvu/goosie
 
 go 1.24.9
 

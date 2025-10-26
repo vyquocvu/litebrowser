@@ -1,6 +1,6 @@
-# Litebrowser Roadmap
+# Goosie Roadmap
 
-This document outlines the planned features and improvements for the litebrowser project. The roadmap is organized into phases based on priority and complexity.
+This document outlines the planned features and improvements for the Goosie project. The roadmap is organized into phases based on priority and complexity.
 
 ## Current Status (v0.2.0)
 
@@ -11,7 +11,7 @@ This document outlines the planned features and improvements for the litebrowser
 - GUI with Fyne framework
 - `console.log()` support
 - `document.getElementById()` support
-- Window titled "Litebrowser"
+- Window titled "Goosie"
 - Body text rendering
 
 ✅ **Navigation Features**
@@ -198,7 +198,7 @@ This document outlines the planned features and improvements for the litebrowser
 
 We welcome contributions! If you're interested in working on any of these features:
 
-1. Check the [Issues](https://github.com/vyquocvu/litebrowser/issues) page for open tasks
+1. Check the [Issues](https://github.com/vyquocvu/goosie/issues) page for open tasks
 2. Comment on an issue to claim it
 3. Fork the repository and create a feature branch
 4. Submit a pull request with your changes

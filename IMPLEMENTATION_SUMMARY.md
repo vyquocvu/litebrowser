@@ -1,9 +1,17 @@
-# Litebrowser Implementation Summary
+# Goosie Browser Implementation Summary
+
+## Async Fetch/Render Architecture
+
+The browser implements an async fetch/render architecture to prevent UI freezing during page loads:
+- Context-based HTTP fetching with cancellable requests
+- Background goroutines for I/O operations
+- Visual loading feedback during page loads
+- Responsive UI at all times
 
 ## ✅ Project Requirements - All Completed
 
 ### 1. Go Project Initialization
-- ✅ Initialized Go module: `github.com/vyquocvu/litebrowser`
+- ✅ Initialized Go module: `github.com/vyquocvu/goosie`
 - ✅ Added all required dependencies:
   - `github.com/dop251/goja` (JavaScript engine)
   - `fyne.io/fyne/v2` (GUI framework)
@@ -22,7 +30,7 @@ internal/ui/browser.go      - GUI rendering
 ### 3. Core Features Implemented
 
 #### ✅ GUI Window
-- Window title: **"Litebrowser"**
+- Window title: **"Goosie"**
 - Implemented in `internal/ui/browser.go` using Fyne
 - Scrollable content display
 - Navigation controls (URL bar, back/forward, refresh, bookmarks)
@@ -91,7 +99,7 @@ internal/ui/browser.go      - GUI rendering
 
 | Feature | Status | Location |
 |---------|--------|----------|
-| Window titled "Litebrowser" | ✅ | internal/ui/browser.go:30 |
+| Window titled "Goosie" | ✅ | internal/ui/browser.go:30 |
 | URL bar for web addresses | ✅ | internal/ui/browser.go:96-102 |
 | Back/Forward navigation | ✅ | internal/ui/browser.go:104-125 |
 | Refresh/Reload button | ✅ | internal/ui/browser.go:127-133 |
@@ -175,7 +183,7 @@ All requirements from the problem statement have been successfully implemented:
 1. ✅ Go project initialized with proper structure
 2. ✅ Dependencies: goja, fyne, x/net/html
 3. ✅ Structure: cmd/browser/main.go, internal/{net,dom,js,ui}/...
-4. ✅ Window titled "Litebrowser"
+4. ✅ Window titled "Goosie"
 5. ✅ Fetches web pages dynamically
 6. ✅ Parses body text
 7. ✅ Renders in canvas
