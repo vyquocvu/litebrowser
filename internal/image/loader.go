@@ -38,18 +38,23 @@ type ImageData struct {
 	Error  error
 }
 
-// Loader handles loading images from various sources
-type Loader struct {
+// OnLoadCallback is a callback function for when an image is loaded
+type OnLoadCallback func(source string)
+
+// loader handles loading images from various sources
+type loader struct {
 	httpClient *http.Client
 	cache      *Cache
 	mu         sync.RWMutex
 	// Track in-progress loads to avoid duplicate requests
 	inProgress map[string]*sync.WaitGroup
+	// OnLoad is called when an image is successfully loaded
+	OnLoad OnLoadCallback
 }
 
 // NewLoader creates a new image loader with a cache
-func NewLoader(cacheSize int) *Loader {
-	return &Loader{
+func NewLoader(cacheSize int) Loader {
+	return &loader{
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -58,9 +63,14 @@ func NewLoader(cacheSize int) *Loader {
 	}
 }
 
+// SetOnLoadCallback sets the callback for when an image is loaded
+func (l *loader) SetOnLoadCallback(callback OnLoadCallback) {
+	l.OnLoad = callback
+}
+
 // Load loads an image from a URL or file path
 // Returns cached image if available, otherwise loads asynchronously
-func (l *Loader) Load(source string) (*ImageData, error) {
+func (l *loader) Load(source string) (*ImageData, error) {
 	// Check cache first
 	if cached := l.cache.Get(source); cached != nil {
 		return cached, nil
@@ -93,7 +103,7 @@ func (l *Loader) Load(source string) (*ImageData, error) {
 }
 
 // LoadSync loads an image synchronously
-func (l *Loader) LoadSync(source string) (*ImageData, error) {
+func (l *loader) LoadSync(source string) (*ImageData, error) {
 	// Check cache first
 	if cached := l.cache.Get(source); cached != nil {
 		return cached, nil
@@ -115,7 +125,7 @@ func (l *Loader) LoadSync(source string) (*ImageData, error) {
 }
 
 // loadAsync loads an image asynchronously
-func (l *Loader) loadAsync(source string, wg *sync.WaitGroup) {
+func (l *loader) loadAsync(source string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	defer func() {
 		l.mu.Lock()
@@ -133,10 +143,15 @@ func (l *Loader) loadAsync(source string, wg *sync.WaitGroup) {
 
 	// Cache the result
 	l.cache.Put(source, data)
+
+	// Trigger callback if loaded successfully
+	if l.OnLoad != nil && data.State == StateLoaded {
+		l.OnLoad(source)
+	}
 }
 
 // loadImage loads an image from a source (URL or file path)
-func (l *Loader) loadImage(source string) (*ImageData, error) {
+func (l *loader) loadImage(source string) (*ImageData, error) {
 	// Determine if it's a URL or file path
 	if isURL(source) {
 		return l.loadFromURL(source)
@@ -145,7 +160,7 @@ func (l *Loader) loadImage(source string) (*ImageData, error) {
 }
 
 // loadFromURL loads an image from a remote URL
-func (l *Loader) loadFromURL(url string) (*ImageData, error) {
+func (l *loader) loadFromURL(url string) (*ImageData, error) {
 	resp, err := l.httpClient.Get(url)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch image: %w", err)
@@ -166,7 +181,7 @@ func (l *Loader) loadFromURL(url string) (*ImageData, error) {
 }
 
 // loadFromFile loads an image from a local file
-func (l *Loader) loadFromFile(path string) (*ImageData, error) {
+func (l *loader) loadFromFile(path string) (*ImageData, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open image file: %w", err)
@@ -177,7 +192,7 @@ func (l *Loader) loadFromFile(path string) (*ImageData, error) {
 }
 
 // decodeImage decodes an image from a reader
-func (l *Loader) decodeImage(r io.Reader) (*ImageData, error) {
+func (l *loader) decodeImage(r io.Reader) (*ImageData, error) {
 	img, format, err := image.Decode(r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
@@ -194,7 +209,7 @@ func (l *Loader) decodeImage(r io.Reader) (*ImageData, error) {
 }
 
 // GetCache returns the cache instance
-func (l *Loader) GetCache() *Cache {
+func (l *loader) GetCache() *Cache {
 	return l.cache
 }
 

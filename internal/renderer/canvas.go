@@ -18,6 +18,7 @@ type CanvasRenderer struct {
 	canvasWidth  float32
 	canvasHeight float32
 	defaultSize  float32
+	window       fyne.Window
 
 	// Viewport for optimized rendering
 	viewportY      float32
@@ -38,7 +39,10 @@ type CanvasRenderer struct {
 	baseURL string
 
 	// Image loader for loading and caching images
-	imageLoader *imageloader.Loader
+	imageLoader imageloader.Loader
+
+	// OnRefresh is a test hook to signal when a refresh is triggered.
+	OnRefresh func()
 }
 
 // NewCanvasRenderer creates a new canvas renderer
@@ -51,6 +55,24 @@ func NewCanvasRenderer(width, height float32) *CanvasRenderer {
 		viewportY:      0,
 		viewportHeight: height,
 		fontMetrics:    NewFontMetrics(defaultSize),
+	}
+}
+
+// SetWindow sets the Fyne window for the renderer
+func (cr *CanvasRenderer) SetWindow(w fyne.Window) {
+	cr.window = w
+	if cr.imageLoader != nil {
+		cr.imageLoader.SetOnLoadCallback(cr.onImageLoaded)
+	}
+}
+
+func (cr *CanvasRenderer) onImageLoaded(source string) {
+	if cr.window != nil {
+		cr.ClearCache()
+		cr.window.Canvas().Refresh(cr.window.Content())
+	}
+	if cr.OnRefresh != nil {
+		cr.OnRefresh()
 	}
 }
 

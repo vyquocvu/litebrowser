@@ -14,10 +14,11 @@ import (
 )
 
 func TestNewLoader(t *testing.T) {
-	loader := NewLoader(10)
-	if loader == nil {
+	l := NewLoader(10)
+	if l == nil {
 		t.Fatal("NewLoader returned nil")
 	}
+	loader := l.(*loader)
 	if loader.cache == nil {
 		t.Error("Cache not initialized")
 	}
@@ -72,7 +73,8 @@ func TestLoadFromFile(t *testing.T) {
 	f.Close()
 
 	// Test loading
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 	data, err := loader.LoadSync(testImagePath)
 	if err != nil {
 		t.Fatalf("LoadSync failed: %v", err)
@@ -109,7 +111,8 @@ func TestLoadFromURL(t *testing.T) {
 	}))
 	defer server.Close()
 
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 	data, err := loader.LoadSync(server.URL)
 	if err != nil {
 		t.Fatalf("LoadSync failed: %v", err)
@@ -136,7 +139,8 @@ func TestLoadFromURLError(t *testing.T) {
 	}))
 	defer server.Close()
 
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 	data, err := loader.LoadSync(server.URL)
 	if err == nil {
 		t.Error("Expected error for 404 response")
@@ -162,7 +166,8 @@ func TestCaching(t *testing.T) {
 	png.Encode(f, img)
 	f.Close()
 
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 
 	// First load
 	data1, err := loader.LoadSync(testImagePath)
@@ -200,7 +205,8 @@ func TestLoadAsync(t *testing.T) {
 	png.Encode(f, img)
 	f.Close()
 
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 
 	// Load async - should return loading state immediately
 	data, err := loader.Load(testImagePath)
@@ -225,7 +231,8 @@ func TestLoadAsync(t *testing.T) {
 }
 
 func TestLoadNonExistentFile(t *testing.T) {
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 	data, err := loader.LoadSync("/nonexistent/file.png")
 	if err == nil {
 		t.Error("Expected error for non-existent file")
@@ -251,7 +258,8 @@ func TestConcurrentLoads(t *testing.T) {
 	png.Encode(f, img)
 	f.Close()
 
-	loader := NewLoader(10)
+	l := NewLoader(10)
+	loader := l.(*loader)
 
 	// Start multiple concurrent loads of the same image
 	done := make(chan bool, 10)

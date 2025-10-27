@@ -63,16 +63,27 @@ func (le *LayoutEngine) buildLayoutBox(node *RenderNode, x, y, availableWidth fl
 	layoutBox := NewLayoutBox(node.ID)
 	le.nodeMap[node.ID] = layoutBox
 	
-	// Determine display type
-	if node.Type == NodeTypeElement {
+	// Determine display type from computed style
+	if node.ComputedStyle != nil && node.ComputedStyle.Display != "" {
+		switch node.ComputedStyle.Display {
+		case "block":
+			layoutBox.Display = DisplayBlock
+		case "inline":
+			layoutBox.Display = DisplayInline
+		case "none":
+			layoutBox.Display = DisplayNone
+			return nil // Don't layout non-displayed elements
+		default:
+			layoutBox.Display = DisplayInline // Default for unknown values
+		}
+	} else if node.Type == NodeTypeElement {
 		if node.IsBlock() {
 			layoutBox.Display = DisplayBlock
 		} else {
 			layoutBox.Display = DisplayInline
 		}
 	} else {
-		// Text nodes are inline
-		layoutBox.Display = DisplayInline
+		layoutBox.Display = DisplayInline // Text nodes are inline
 	}
 	
 	// Compute layout
@@ -105,10 +116,10 @@ func (le *LayoutEngine) computeLayoutBox(node *RenderNode, layoutBox *LayoutBox,
 
 // computeTextLayout computes layout for text nodes
 func (le *LayoutEngine) computeTextLayout(node *RenderNode, layoutBox *LayoutBox, x, y, availableWidth float32) float32 {
-	// Get font size from parent element
+	// Get font size from computed style
 	fontSize := le.defaultFontSize
-	if node.Parent != nil {
-		fontSize = le.fontMetrics.GetFontSize(node.Parent.TagName)
+	if node.Parent != nil && node.Parent.ComputedStyle != nil && node.Parent.ComputedStyle.FontSize > 0 {
+		fontSize = node.Parent.ComputedStyle.FontSize
 	}
 	
 	// Get text style from parent hierarchy
