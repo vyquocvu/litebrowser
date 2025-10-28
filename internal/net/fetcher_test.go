@@ -31,7 +31,7 @@ func TestFetchWithContextCancellation(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	
-	_, err := fetcher.FetchWithContext(ctx, "https://example.com")
+	_, err := fetcher.FetchWithContext(ctx, "https://example.com", nil)
 	if err == nil {
 		t.Error("Expected error for cancelled context, got nil")
 	}
@@ -47,7 +47,7 @@ func TestFetchWithContextTimeout(t *testing.T) {
 	// Wait a moment to ensure timeout
 	time.Sleep(10 * time.Millisecond)
 	
-	_, err := fetcher.FetchWithContext(ctx, "https://example.com")
+	_, err := fetcher.FetchWithContext(ctx, "https://example.com", nil)
 	if err == nil {
 		t.Error("Expected error for timed out context, got nil")
 	}
