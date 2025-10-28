@@ -67,13 +67,19 @@ func (cr *CanvasRenderer) SetWindow(w fyne.Window) {
 }
 
 func (cr *CanvasRenderer) onImageLoaded(source string) {
-	if cr.window != nil {
+	if cr.window == nil {
+		return
+	}
+
+	// Use fyne.Do to safely update the UI from any thread
+	fyne.Do(func() {
 		cr.ClearCache()
 		cr.window.Canvas().Refresh(cr.window.Content())
-	}
-	if cr.OnRefresh != nil {
-		cr.OnRefresh()
-	}
+		
+		if cr.OnRefresh != nil {
+			cr.OnRefresh()
+		}
+	})
 }
 
 // SetViewport sets the current viewport for optimized rendering
