@@ -142,9 +142,6 @@ func (b *Browser) newTabInternal() *Tab {
 func (b *Browser) NewTab() *Tab {
 	tab := b.newTabInternal()
 	b.tabItems = append(b.tabItems, tab)
-	tabItem := tab.AsTabItem()
-	b.tabs.Append(tabItem)
-	b.tabs.Select(tabItem)
 	return tab
 }
 
