@@ -26,7 +26,7 @@ func TestAsyncFetchCancellation(t *testing.T) {
 	// Start fetch in goroutine
 	done := make(chan error, 1)
 	go func() {
-		_, err := fetcher.FetchWithContext(ctx, server.URL)
+		_, err := fetcher.FetchWithContext(ctx, server.URL, nil)
 		done <- err
 	}()
 
@@ -64,7 +64,7 @@ func TestConcurrentFetches(t *testing.T) {
 		go func() {
 			defer wg.Done()
 			ctx := context.Background()
-			_, err := fetcher.FetchWithContext(ctx, server.URL)
+			_, err := fetcher.FetchWithContext(ctx, server.URL, nil)
 			if err != nil {
 				errors <- err
 			}
@@ -92,7 +92,7 @@ func TestAsyncFetchWithTimeout(t *testing.T) {
 	defer cancel()
 
 	start := time.Now()
-	_, err := fetcher.FetchWithContext(ctx, server.URL)
+	_, err := fetcher.FetchWithContext(ctx, server.URL, nil)
 	elapsed := time.Since(start)
 
 	if err == nil {
@@ -137,11 +137,11 @@ func TestMultipleNavigationCancellation(t *testing.T) {
 		if i < len(servers)-1 {
 			// For all but last, start fetch and immediately move to next
 			go func(url string, c context.Context) {
-				fetcher.FetchWithContext(c, url)
+				fetcher.FetchWithContext(c, url, nil)
 			}(server.URL, ctx)
 		} else {
 			// Last one should complete
-			_, err := fetcher.FetchWithContext(ctx, server.URL)
+			_, err := fetcher.FetchWithContext(ctx, server.URL, nil)
 			if err != nil {
 				t.Errorf("Final fetch should succeed, got error: %v", err)
 			}

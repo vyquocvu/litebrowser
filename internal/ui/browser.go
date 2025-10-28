@@ -4,6 +4,7 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"fyne.io/fyne/v2/container"
+	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"github.com/vyquocvu/goosie/internal/renderer"
 )
@@ -38,18 +39,29 @@ type NavigationCallback func(url string)
 type Browser struct {
 	app                 fyne.App
 	window              fyne.Window
-	contentBox          *widget.RichText
-	contentScroll       *container.Scroll
 	state               *BrowserState
 	urlEntry            *widget.Entry
 	backButton          *widget.Button
 	forwardButton       *widget.Button
 	refreshButton       *widget.Button
 	bookmarkButton      *widget.Button
-	loadingBar          *widget.ProgressBarInfinite
+	settingsButton      *widget.Button
+	loadingBar          *widget.ProgressBar
 	loadingBarContainer *fyne.Container
 	onNavigate          NavigationCallback
-	htmlRenderer        *renderer.Renderer
+	tabs                *container.DocTabs
+	tabItems            []*Tab
+}
+
+// Tab represents a single browser tab
+type Tab struct {
+	title         string
+	content       fyne.CanvasObject
+	contentBox    *widget.RichText
+	contentScroll *container.Scroll
+	htmlRenderer  *renderer.Renderer
+	state         *BrowserState
+	browser       *Browser
 }
 
 // window interface to allow testing
@@ -68,20 +80,10 @@ func NewBrowser() *Browser {
 	// Set window size
 	w.Resize(fyne.NewSize(1000, 700))
 
-	contentBox := widget.NewRichTextFromMarkdown("Welcome to Goosie! Enter a URL above to start browsing.")
-	contentBox.Wrapping = fyne.TextWrapWord
-
 	state := NewBrowserState()
 
-	// Create HTML renderer with canvas size
-	htmlRenderer := renderer.NewRenderer(1000, 700)
-	htmlRenderer.SetWindow(w)
-
-	// Create scroll container
-	contentScroll := container.NewScroll(contentBox)
-
 	// Create thin, full-width loading progress bar with 5px height (initially hidden)
-	loadingBar := widget.NewProgressBarInfinite()
+	loadingBar := widget.NewProgressBar()
 	loadingBar.Hide()
 
 	// Wrap the progress bar in a container with fixed height of 5px
@@ -91,50 +93,109 @@ func NewBrowser() *Browser {
 	browser := &Browser{
 		app:                 a,
 		window:              w,
-		contentBox:          contentBox,
-		contentScroll:       contentScroll,
 		state:               state,
-		htmlRenderer:        htmlRenderer,
 		loadingBar:          loadingBar,
 		loadingBarContainer: loadingBarContainer,
+		tabItems:            []*Tab{},
 	}
+
+	firstTab := browser.newTabInternal()
+	browser.tabItems = append(browser.tabItems, firstTab)
+
+	browser.tabs = container.NewDocTabs(firstTab.AsTabItem())
+	browser.tabs.CreateTab = func() *container.TabItem {
+		tab := browser.NewTab()
+		return tab.AsTabItem()
+	}
+	browser.tabs.OnSelected = func(tab *container.TabItem) {
+		browser.updateNavigationButtons()
+	}
+	browser.tabs.SetTabLocation(container.TabLocationTop)
+
+	browser.createNavigationControls()
 
 	return browser
 }
 
+// newTabInternal creates a new tab without adding it to the tab container
+func (b *Browser) newTabInternal() *Tab {
+	contentBox := widget.NewRichTextFromMarkdown("Welcome to Goosie! Enter a URL above to start browsing.")
+	contentBox.Wrapping = fyne.TextWrapWord
+	contentScroll := container.NewScroll(contentBox)
+
+	htmlRenderer := renderer.NewRenderer(1000, 700)
+	htmlRenderer.SetWindow(b.window)
+	htmlRenderer.SetNavigationCallback(func(url string) {
+		if b.onNavigate != nil {
+			b.onNavigate(url)
+		}
+	})
+
+	tabState := NewBrowserState()
+
+	return &Tab{
+		title:         "New Tab",
+		content:       contentScroll,
+		contentBox:    contentBox,
+		contentScroll: contentScroll,
+		htmlRenderer:  htmlRenderer,
+		state:         tabState,
+		browser:       b,
+	}
+}
+
+// NewTab creates a new browser tab and adds it to the tab container
+func (b *Browser) NewTab() *Tab {
+	tab := b.newTabInternal()
+	b.tabItems = append(b.tabItems, tab)
+	return tab
+}
+
+// ActiveTab returns the currently active tab
+func (b *Browser) ActiveTab() *Tab {
+	if len(b.tabItems) == 0 {
+		return nil
+	}
+	selectedIndex := b.tabs.SelectedIndex()
+	if selectedIndex < 0 || selectedIndex >= len(b.tabItems) {
+		return nil
+	}
+	return b.tabItems[selectedIndex]
+}
+
 // SetContent updates the displayed content (plain text)
 func (b *Browser) SetContent(content string) {
-	b.contentBox.ParseMarkdown(content)
+	if tab := b.ActiveTab(); tab != nil {
+		tab.contentBox.ParseMarkdown(content)
+	}
 }
 
 // SetHTMLContent updates the displayed content from markdown-formatted HTML
 func (b *Browser) SetHTMLContent(content string) {
-	b.contentBox.ParseMarkdown(content)
+	if tab := b.ActiveTab(); tab != nil {
+		tab.contentBox.ParseMarkdown(content)
+	}
 }
 
 // RenderHTMLContent renders HTML content using the canvas-based renderer
 func (b *Browser) RenderHTMLContent(htmlContent string) error {
+	tab := b.ActiveTab()
+	if tab == nil {
+		return nil
+	}
 	// Set the current URL for resolving relative links
-	currentURL := b.state.GetCurrentURL()
-	b.htmlRenderer.SetCurrentURL(currentURL)
+	currentURL := tab.state.GetCurrentURL()
+	tab.htmlRenderer.SetCurrentURL(currentURL)
 
-	canvasObject, err := b.htmlRenderer.RenderHTML(htmlContent)
+	canvasObject, err := tab.htmlRenderer.RenderHTML(htmlContent)
 	if err != nil {
 		return err
 	}
 
 	// Update the scroll container with the rendered content on the main thread
 	fyne.Do(func() {
-		b.contentScroll.Content = canvasObject
-
-		// Get content height and update viewport
-		contentHeight := b.htmlRenderer.GetContentHeight()
-		if contentHeight > 0 {
-			// Initialize viewport to full height
-			b.htmlRenderer.SetViewport(0, b.contentScroll.Size().Height)
-		}
-
-		b.contentScroll.Refresh()
+		tab.contentScroll.Content = canvasObject
+		tab.contentScroll.Refresh()
 	})
 
 	return nil
@@ -143,23 +204,14 @@ func (b *Browser) RenderHTMLContent(htmlContent string) error {
 // SetNavigationCallback sets the callback for when navigation is requested
 func (b *Browser) SetNavigationCallback(callback NavigationCallback) {
 	b.onNavigate = callback
-	// Also pass the callback to the renderer for link clicks
-	b.htmlRenderer.SetNavigationCallback(func(url string) {
-		if b.onNavigate != nil {
-			b.onNavigate(url)
-		}
-	})
 }
 
 // Show displays the browser window
 func (b *Browser) Show() {
-	// Create navigation controls
-	b.createNavigationControls()
-
 	// Create navigation bar
 	navBar := container.NewBorder(nil, nil,
 		container.NewHBox(b.backButton, b.forwardButton, b.refreshButton),
-		container.NewHBox(b.bookmarkButton),
+		container.NewHBox(b.bookmarkButton, b.settingsButton),
 		b.urlEntry,
 	)
 
@@ -167,7 +219,7 @@ func (b *Browser) Show() {
 	content := container.NewBorder(
 		container.NewVBox(navBar, b.loadingBarContainer),
 		nil, nil, nil,
-		b.contentScroll,
+		b.tabs,
 	)
 
 	b.window.SetContent(content)
@@ -187,9 +239,11 @@ func (b *Browser) createNavigationControls() {
 
 	// Back button
 	b.backButton = widget.NewButton("←", func() {
-		if url, ok := b.state.GoBack(); ok {
-			if b.onNavigate != nil {
-				b.onNavigate(url)
+		if tab := b.ActiveTab(); tab != nil {
+			if url, ok := tab.state.GoBack(); ok {
+				if b.onNavigate != nil {
+					b.onNavigate(url)
+				}
 			}
 		}
 	})
@@ -197,9 +251,11 @@ func (b *Browser) createNavigationControls() {
 
 	// Forward button
 	b.forwardButton = widget.NewButton("→", func() {
-		if url, ok := b.state.GoForward(); ok {
-			if b.onNavigate != nil {
-				b.onNavigate(url)
+		if tab := b.ActiveTab(); tab != nil {
+			if url, ok := tab.state.GoForward(); ok {
+				if b.onNavigate != nil {
+					b.onNavigate(url)
+				}
 			}
 		}
 	})
@@ -207,9 +263,11 @@ func (b *Browser) createNavigationControls() {
 
 	// Refresh button
 	b.refreshButton = widget.NewButton("⟳", func() {
-		currentURL := b.state.GetCurrentURL()
-		if b.onNavigate != nil && currentURL != "" {
-			b.onNavigate(currentURL)
+		if tab := b.ActiveTab(); tab != nil {
+			currentURL := tab.state.GetCurrentURL()
+			if b.onNavigate != nil && currentURL != "" {
+				b.onNavigate(currentURL)
+			}
 		}
 	})
 
@@ -218,47 +276,70 @@ func (b *Browser) createNavigationControls() {
 		b.toggleBookmark()
 	})
 	b.bookmarkButton.Disable()
+
+	// Settings button
+	b.settingsButton = widget.NewButton("⚙", func() {
+		d := dialog.NewInformation("Settings", "Settings are not yet implemented.", b.window)
+		d.Show()
+	})
+}
+
+// AsTabItem converts a Tab to a TabItem
+func (t *Tab) AsTabItem() *container.TabItem {
+	return container.NewTabItem(t.title, t.content)
 }
 
 // toggleBookmark adds or removes the current page from bookmarks
 func (b *Browser) toggleBookmark() {
-	currentURL := b.state.GetCurrentURL()
-	if currentURL == "" {
-		return
-	}
+	if tab := b.ActiveTab(); tab != nil {
+		currentURL := tab.state.GetCurrentURL()
+		if currentURL == "" {
+			return
+		}
 
-	if b.state.IsBookmarked(currentURL) {
-		b.state.RemoveBookmark(currentURL)
-		b.bookmarkButton.SetText("☆")
-	} else {
-		b.state.AddBookmark(currentURL)
-		b.bookmarkButton.SetText("★")
+		if b.state.IsBookmarked(currentURL) {
+			b.state.RemoveBookmark(currentURL)
+			b.bookmarkButton.SetText("☆")
+		} else {
+			b.state.AddBookmark(currentURL)
+			b.bookmarkButton.SetText("★")
+		}
+		b.bookmarkButton.Refresh()
 	}
-	b.bookmarkButton.Refresh()
 }
 
 // NavigateTo navigates to a URL and updates the UI
 func (b *Browser) NavigateTo(url string) {
-	b.state.AddToHistory(url)
-	b.urlEntry.SetText(url)
-	b.updateNavigationButtons()
+	if tab := b.ActiveTab(); tab != nil {
+		tab.state.AddToHistory(url)
+		b.urlEntry.SetText(url)
+		b.updateNavigationButtons()
+	}
 }
 
 // updateNavigationButtons updates the enabled/disabled state of navigation buttons
 func (b *Browser) updateNavigationButtons() {
-	if b.state.CanGoBack() {
+	tab := b.ActiveTab()
+	if tab == nil {
+		b.backButton.Disable()
+		b.forwardButton.Disable()
+		b.bookmarkButton.Disable()
+		return
+	}
+
+	if tab.state.CanGoBack() {
 		b.backButton.Enable()
 	} else {
 		b.backButton.Disable()
 	}
 
-	if b.state.CanGoForward() {
+	if tab.state.CanGoForward() {
 		b.forwardButton.Enable()
 	} else {
 		b.forwardButton.Disable()
 	}
 
-	currentURL := b.state.GetCurrentURL()
+	currentURL := tab.state.GetCurrentURL()
 	if currentURL != "" {
 		b.bookmarkButton.Enable()
 		if b.state.IsBookmarked(currentURL) {
@@ -279,16 +360,19 @@ func (b *Browser) GetBookmarks() []string {
 
 // GetHistory returns the navigation history
 func (b *Browser) GetHistory() []string {
-	return b.state.GetHistory()
+	if tab := b.ActiveTab(); tab != nil {
+		return tab.state.GetHistory()
+	}
+	return []string{}
 }
 
 // ShowLoading displays the loading indicator
 func (b *Browser) ShowLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
+		b.loadingBar.SetValue(0)
 		b.loadingBarContainer.Show()
 		b.loadingBar.Show()
-		b.loadingBar.Start()
 	})
 }
 
@@ -296,9 +380,28 @@ func (b *Browser) ShowLoading() {
 func (b *Browser) HideLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingBar.Stop()
 		b.loadingBar.Hide()
 		b.loadingBarContainer.Hide()
+	})
+}
+
+// UpdateLoadingProgress updates the loading progress bar
+func (b *Browser) UpdateLoadingProgress(value float64) {
+	fyne.Do(func() {
+		b.loadingBar.SetValue(value)
+	})
+}
+
+// UpdateActiveTabTitle updates the title of the active tab
+func (b *Browser) UpdateActiveTabTitle(title string) {
+	fyne.Do(func() {
+		if tab := b.ActiveTab(); tab != nil {
+			tab.title = title
+			if selected := b.tabs.Selected(); selected != nil {
+				selected.Text = title
+				b.tabs.Refresh()
+			}
+		}
 	})
 }
 
