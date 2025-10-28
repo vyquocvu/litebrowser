@@ -110,6 +110,7 @@ func NewBrowser() *Browser {
 	browser.tabs.OnSelected = func(tab *container.TabItem) {
 		browser.updateNavigationButtons()
 	}
+	browser.tabs.SetTabLocation(container.TabLocationTop)
 
 	browser.createNavigationControls()
 
@@ -124,6 +125,11 @@ func (b *Browser) newTabInternal() *Tab {
 
 	htmlRenderer := renderer.NewRenderer(1000, 700)
 	htmlRenderer.SetWindow(b.window)
+	htmlRenderer.SetNavigationCallback(func(url string) {
+		if b.onNavigate != nil {
+			b.onNavigate(url)
+		}
+	})
 
 	tabState := NewBrowserState()
 
@@ -198,14 +204,6 @@ func (b *Browser) RenderHTMLContent(htmlContent string) error {
 // SetNavigationCallback sets the callback for when navigation is requested
 func (b *Browser) SetNavigationCallback(callback NavigationCallback) {
 	b.onNavigate = callback
-	// Also pass the callback to the renderer for link clicks
-	if tab := b.ActiveTab(); tab != nil {
-		tab.htmlRenderer.SetNavigationCallback(func(url string) {
-			if b.onNavigate != nil {
-				b.onNavigate(url)
-			}
-		})
-	}
 }
 
 // Show displays the browser window
@@ -391,6 +389,19 @@ func (b *Browser) HideLoading() {
 func (b *Browser) UpdateLoadingProgress(value float64) {
 	fyne.Do(func() {
 		b.loadingBar.SetValue(value)
+	})
+}
+
+// UpdateActiveTabTitle updates the title of the active tab
+func (b *Browser) UpdateActiveTabTitle(title string) {
+	fyne.Do(func() {
+		if tab := b.ActiveTab(); tab != nil {
+			tab.title = title
+			if selected := b.tabs.Selected(); selected != nil {
+				selected.Text = title
+				b.tabs.Refresh()
+			}
+		}
 	})
 }
 
