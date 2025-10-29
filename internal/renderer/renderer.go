@@ -89,6 +89,8 @@ func (r *Renderer) RenderHTML(htmlContent string) (fyne.CanvasObject, error) {
 
 	// Render to canvas with viewport optimization
 	canvasObject := r.canvasRenderer.RenderWithViewport(renderTree, layoutTree)
+	r.imageLoader.SetOnLoadCallback(r.onImageLoaded)
+	r.loadImages(renderTree)
 
 	return canvasObject, nil
 }
@@ -199,6 +201,28 @@ func (r *Renderer) SetCurrentURL(url string) {
 // SetWindow sets the Fyne window for the renderer
 func (r *Renderer) SetWindow(w fyne.Window) {
 	r.canvasRenderer.SetWindow(w)
+}
+
+func (r *Renderer) loadImages(node *RenderNode) {
+	if node.TagName == "img" {
+		if src, ok := node.GetAttribute("src"); ok {
+			go func() {
+				img, err := r.imageLoader.Load(src)
+				if err == nil {
+					node.ImageData = img
+				}
+			}()
+		}
+	}
+	for _, child := range node.Children {
+		r.loadImages(child)
+	}
+}
+
+func (r *Renderer) onImageLoaded(src string) {
+	if r.canvasRenderer.window != nil {
+		r.canvasRenderer.window.Canvas().Refresh(r.canvasRenderer.window.Content())
+	}
 }
 
 // extractAndParseCSS finds all <style> tags, extracts their content, and parses it.

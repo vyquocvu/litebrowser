@@ -23,6 +23,7 @@ const (
 type PaintCommand struct {
 	Type   PaintCommandType
 	NodeID int64   // ID of the node this command is for
+	Node   *RenderNode // Direct reference to the render node
 	Box    Rect    // Position and size for the command
 	
 	// Text-specific fields
@@ -166,6 +167,7 @@ func (dlb *DisplayListBuilder) buildRecursive(layoutBox *LayoutBox, renderMap ma
 					cmd := &PaintCommand{
 						Type:     PaintText,
 						NodeID:   inlineBox.NodeID,
+						Node:     inlineRenderNode,
 						Box:      layoutBox.Box,
 						Text:     inlineRenderNode.Text,
 						FontSize: fontSize,
@@ -214,6 +216,7 @@ func (dlb *DisplayListBuilder) addTextCommand(layoutBox *LayoutBox, renderNode *
 	cmd := &PaintCommand{
 		Type:     PaintText,
 		NodeID:   layoutBox.NodeID,
+		Node:     renderNode,
 		Box:      layoutBox.Box,
 		Text:     text,
 		FontSize: fontSize,
@@ -236,6 +239,7 @@ func (dlb *DisplayListBuilder) addElementCommand(layoutBox *LayoutBox, renderNod
 				cmd := &PaintCommand{
 					Type:     PaintLink,
 					NodeID:   layoutBox.NodeID,
+					Node:     renderNode,
 					Box:      layoutBox.Box,
 					LinkURL:  href,
 					LinkText: linkText,
@@ -252,6 +256,7 @@ func (dlb *DisplayListBuilder) addElementCommand(layoutBox *LayoutBox, renderNod
 		cmd := &PaintCommand{
 			Type:        PaintRect,
 			NodeID:      layoutBox.NodeID,
+			Node:        renderNode,
 			Box:         layoutBox.Box,
 			FillColor:   color.RGBA{R: 200, G: 200, B: 200, A: 255},
 			StrokeColor: color.RGBA{R: 150, G: 150, B: 150, A: 255},
@@ -267,6 +272,7 @@ func (dlb *DisplayListBuilder) addElementCommand(layoutBox *LayoutBox, renderNod
 			textCmd := &PaintCommand{
 				Type:     PaintImage,
 				NodeID:   layoutBox.NodeID,
+				Node:     renderNode,
 				Box:      layoutBox.Box,
 				ImageSrc: src,
 				ImageAlt: alt,

@@ -78,9 +78,11 @@ func TestImageRefreshAfterLoad(t *testing.T) {
 
 	// Initial Render
 	renderTree := BuildRenderTree(body)
-	layoutTree := NewLayoutEngine(200, 200).ComputeLayout(renderTree)
-	canvasObject := renderer.RenderWithViewport(renderTree, layoutTree)
+	canvasObject := renderer.Render(renderTree)
 	w.SetContent(canvasObject)
+
+	// Allow some time for the async load to start
+	time.Sleep(100 * time.Millisecond)
 
 	// 1. Verify the "Loading..." state before the image is loaded
 	foundLoadingLabel := findWidget(w.Content(), func(obj fyne.CanvasObject) bool {
@@ -107,9 +109,7 @@ func TestImageRefreshAfterLoad(t *testing.T) {
 	}
 
 	// 4. Re-render and verify the final state
-	renderTreeAfterLoad := BuildRenderTree(body)
-	layoutTreeAfterLoad := NewLayoutEngine(200, 200).ComputeLayout(renderTreeAfterLoad)
-	canvasObjectAfterLoad := renderer.RenderWithViewport(renderTreeAfterLoad, layoutTreeAfterLoad)
+	canvasObjectAfterLoad := renderer.Render(renderTree)
 	w.SetContent(canvasObjectAfterLoad)
 
 	foundImage := findWidget(w.Content(), func(obj fyne.CanvasObject) bool {
