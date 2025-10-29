@@ -168,6 +168,18 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 		cr.renderListItem(node, objects)
 	case "img":
 		cr.renderImage(node, objects)
+	case "input":
+		cr.renderInput(node, objects)
+	case "button":
+		cr.renderButton(node, objects)
+	case "textarea":
+		cr.renderTextarea(node, objects)
+	case "table":
+		cr.renderTable(node, objects)
+	case "tr":
+		// Handled by renderTable
+	case "td":
+		// Handled by renderTable
 	case "br":
 		// Add a spacer for line break
 		*objects = append(*objects, widget.NewLabel(""))
@@ -631,11 +643,10 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 
 	case PaintImage:
 		// Try to load and render the actual image if loader is available
-		if cr.imageLoader != nil && cmd.ImageSrc != "" {
-			resolvedSrc := cr.resolveURL(cmd.ImageSrc)
-			imageData, err := cr.imageLoader.Load(resolvedSrc)
+		if cr.imageLoader != nil && cmd.Node.ImageData != nil {
+			imageData := cmd.Node.ImageData
 
-			if err == nil && imageData != nil {
+			if imageData != nil {
 				switch imageData.State {
 				case imageloader.StateLoaded:
 					// Image loaded successfully - render it
@@ -738,4 +749,70 @@ func (cr *CanvasRenderer) ClearCache() {
 	cr.cachedDisplayList = nil
 	cr.cachedLayoutRoot = nil
 	cr.cachedRenderRoot = nil
+}
+
+func (cr *CanvasRenderer) renderInput(node *RenderNode, objects *[]fyne.CanvasObject) {
+	entry := widget.NewEntry()
+	if placeholder, ok := node.GetAttribute("placeholder"); ok {
+		entry.SetPlaceHolder(placeholder)
+	}
+	*objects = append(*objects, entry)
+}
+
+func (cr *CanvasRenderer) renderTable(node *RenderNode, objects *[]fyne.CanvasObject) {
+	data := [][]string{}
+	var maxCols int
+
+	for _, child := range node.Children {
+		if child.TagName == "tr" {
+			row := []string{}
+			for _, td := range child.Children {
+				if td.TagName == "td" {
+					row = append(row, cr.extractText(td))
+				}
+			}
+			if len(row) > maxCols {
+				maxCols = len(row)
+			}
+			data = append(data, row)
+		}
+	}
+
+	if len(data) == 0 || maxCols == 0 {
+		return
+	}
+
+	table := widget.NewTable(
+		func() (int, int) {
+			return len(data), maxCols
+		},
+		func() fyne.CanvasObject {
+			return widget.NewLabel("")
+		},
+		func(i widget.TableCellID, o fyne.CanvasObject) {
+			if i.Row < len(data) && i.Col < len(data[i.Row]) {
+				o.(*widget.Label).SetText(data[i.Row][i.Col])
+			}
+		},
+	)
+
+	for i := 0; i < maxCols; i++ {
+		table.SetColumnWidth(i, 100)
+	}
+
+	*objects = append(*objects, table)
+}
+
+func (cr *CanvasRenderer) renderButton(node *RenderNode, objects *[]fyne.CanvasObject) {
+	text := cr.extractText(node)
+	button := widget.NewButton(text, func() {})
+	*objects = append(*objects, button)
+}
+
+func (cr *CanvasRenderer) renderTextarea(node *RenderNode, objects *[]fyne.CanvasObject) {
+	entry := widget.NewMultiLineEntry()
+	if placeholder, ok := node.GetAttribute("placeholder"); ok {
+		entry.SetPlaceHolder(placeholder)
+	}
+	*objects = append(*objects, entry)
 }

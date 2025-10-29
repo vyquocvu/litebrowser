@@ -96,6 +96,25 @@ func (sm *StyleManager) matches(selector css.Selector, node *RenderNode) bool {
 	return true
 }
 
+// colorNameToHex maps common color names to their hex values.
+var colorNameToHex = map[string]string{
+	"black":   "#000000",
+	"white":   "#ffffff",
+	"red":     "#ff0000",
+	"green":   "#008000",
+	"blue":    "#0000ff",
+	"yellow":  "#ffff00",
+	"cyan":    "#00ffff",
+	"magenta": "#ff00ff",
+	"silver":  "#c0c0c0",
+	"gray":    "#808080",
+	"maroon":  "#800000",
+	"olive":   "#808000",
+	"purple":  "#800080",
+	"teal":    "#008080",
+	"navy":    "#000080",
+}
+
 func (sm *StyleManager) applyDeclaration(node *RenderNode, decl css.Declaration) {
 	style := node.ComputedStyle
 	switch decl.Property {
@@ -115,7 +134,7 @@ func (sm *StyleManager) applyDeclaration(node *RenderNode, decl css.Declaration)
 		if val, err := parseColor(decl.Value); err == nil {
 			style.Color = val
 		}
-	case "background":
+	case "background-color":
 		if val, err := parseColor(decl.Value); err == nil {
 			style.BackgroundColor = val
 		}
@@ -151,11 +170,15 @@ func parseFontSize(value string, parentFontSize float32) (float32, error) {
 }
 
 func parseColor(value string) (color.Color, error) {
-	if strings.HasPrefix(value, "#") {
-		return parseHexColor(value)
+	lowerValue := strings.ToLower(value)
+	if hex, ok := colorNameToHex[lowerValue]; ok {
+		return parseHexColor(hex)
+	}
+	if strings.HasPrefix(lowerValue, "#") {
+		return parseHexColor(lowerValue)
 	}
 	// Add support for other color formats like rgb() later
-	return color.Black, fmt.Errorf("unsupported color format")
+	return color.Black, fmt.Errorf("unsupported color format: %s", value)
 }
 
 func parseHexColor(hex string) (color.Color, error) {

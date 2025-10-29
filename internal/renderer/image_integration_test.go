@@ -73,6 +73,15 @@ func TestRendererWithImages(t *testing.T) {
 	if cached.Height != 50 {
 		t.Errorf("Expected height 50, got %d", cached.Height)
 	}
+
+	// Check if the image data is attached to the render node
+	imgNode := findNodeByTag(r.currentRenderTree, "img")
+	if imgNode == nil {
+		t.Fatal("img node not found in render tree")
+	}
+	if imgNode.ImageData == nil {
+		t.Error("Expected ImageData to be attached to the render node")
+	}
 }
 
 func TestRendererWithMissingImage(t *testing.T) {

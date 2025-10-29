@@ -62,7 +62,7 @@ func TestAdvancedStyleApplication(t *testing.T) {
 				<style>
 					body {
 						font-size: 16px;
-						background: #eee;
+						background-color: #eee;
 						width: 60vw;
 						margin: 15vh auto;
 						font-family: system-ui, sans-serif;
@@ -148,4 +148,50 @@ func findNodeByTag(node *RenderNode, tagName string) *RenderNode {
 		}
 	}
 	return nil
+}
+
+func TestNamedColorApplication(t *testing.T) {
+	htmlContent := `
+		<html>
+			<head>
+				<style>
+					div {
+						color: red;
+						background-color: blue;
+					}
+				</style>
+			</head>
+			<body>
+				<div>Red text, blue background</div>
+			</body>
+		</html>
+	`
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		t.Fatalf("html.Parse failed: %v", err)
+	}
+
+	stylesheet := extractAndParseCSS(doc)
+	renderTree := BuildRenderTree(findBodyNode(doc))
+	if renderTree == nil {
+		t.Fatal("BuildRenderTree returned nil")
+	}
+
+	styleManager := NewStyleManager(stylesheet)
+	styleManager.ApplyStyles(renderTree)
+
+	divNode := findNodeByTag(renderTree, "div")
+	if divNode == nil {
+		t.Fatal("div node not found in render tree")
+	}
+
+	expectedColor := color.RGBA{R: 0xff, A: 0xff}
+	if divNode.ComputedStyle.Color != expectedColor {
+		t.Errorf("expected color %v, got %v", expectedColor, divNode.ComputedStyle.Color)
+	}
+
+	expectedBgColor := color.RGBA{B: 0xff, A: 0xff}
+	if divNode.ComputedStyle.BackgroundColor != expectedBgColor {
+		t.Errorf("expected background color %v, got %v", expectedBgColor, divNode.ComputedStyle.BackgroundColor)
+	}
 }

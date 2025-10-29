@@ -6,6 +6,8 @@ import (
 	"sync/atomic"
 
 	"golang.org/x/net/html"
+
+	"github.com/vyquocvu/goosie/internal/image"
 )
 
 // NodeType represents the type of render node
@@ -32,6 +34,7 @@ type RenderNode struct {
 	Parent        *RenderNode       // Parent node
 	ComputedStyle *Style
 	Box           *Box
+	ImageData     *image.ImageData // For `<img>` elements
 }
 
 // Style represents computed styles for a node (placeholder for future CSS support)
