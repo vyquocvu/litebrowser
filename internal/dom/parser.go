@@ -94,6 +94,35 @@ func (p *Parser) GetElementByID(htmlContent, id string) (string, error) {
 	return result, nil
 }
 
+// GetElementByIDFull returns the full Element object by ID
+func (p *Parser) GetElementByIDFull(htmlContent, id string) (*Element, error) {
+	doc, err := html.Parse(strings.NewReader(htmlContent))
+	if err != nil {
+		return nil, err
+	}
+
+	var result *Element
+	var findElement func(*html.Node)
+	findElement = func(n *html.Node) {
+		if n.Type == html.ElementNode {
+			for _, attr := range n.Attr {
+				if attr.Key == "id" && attr.Val == id {
+					result = p.nodeToElement(n)
+					return
+				}
+			}
+		}
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			if result == nil {
+				findElement(c)
+			}
+		}
+	}
+
+	findElement(doc)
+	return result, nil
+}
+
 // GetElementsByClassName returns all elements with the specified class name
 func (p *Parser) GetElementsByClassName(htmlContent, className string) ([]*Element, error) {
 	doc, err := html.Parse(strings.NewReader(htmlContent))

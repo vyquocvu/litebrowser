@@ -59,12 +59,12 @@ func (r *Runtime) setupDocumentAPI() {
 			return goja.Null()
 		}
 		
-		text, err := r.parser.GetElementByID(r.htmlCache, id)
-		if err != nil || text == "" {
+		element, err := r.parser.GetElementByIDFull(r.htmlCache, id)
+		if err != nil || element == nil {
 			return goja.Null()
 		}
 		
-		return r.createElementObject(id, text, "", nil)
+		return r.createElementObject(element.ID, element.TextContent, element.TagName, element)
 	})
 	
 	// document.getElementsByClassName

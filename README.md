@@ -20,9 +20,13 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
   - Loading spinner with visual feedback
   - Cancellable requests (navigate away anytime)
   - Context-based timeout and cancellation support
-- **JavaScript Runtime**: Execute JavaScript with Goja engine
-  - `console.log()` support
-  - `document.getElementById()` support
+- **JavaScript Runtime**: Execute JavaScript with Goja engine and comprehensive DOM APIs
+  - Console API: `console.log()`
+  - Query methods: `getElementById()`, `getElementsByClassName()`, `getElementsByTagName()`, `querySelector()`, `querySelectorAll()`
+  - Element creation: `createElement()`
+  - DOM manipulation: `appendChild()`, `removeChild()`, `replaceChild()`, `insertBefore()`
+  - Event handling: `addEventListener()`, `removeEventListener()`
+  - See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) for complete API reference and examples
 - **GUI**: Display rendered content in a Fyne window titled "Goosie"
 - **Navigation**: Full-featured navigation system
   - URL bar for entering web addresses
@@ -157,12 +161,25 @@ The browser demonstrates web functionality by:
    - Supports headings, paragraphs, lists, links, and images
 5. **History**: Navigate back and forward through visited pages
 6. **Bookmarks**: Save and manage favorite pages with visual indicators
-7. **JavaScript**: Runs JavaScript with Goja, supporting:
+7. **JavaScript**: Runs JavaScript with Goja, supporting comprehensive DOM APIs:
    ```javascript
-   console.log("Page loaded: " + document.title);
+   // Query elements
    var elem = document.getElementById("main-content");
-   console.log(elem.textContent);
+   var items = document.querySelectorAll(".list-item");
+   
+   // Manipulate DOM
+   var newDiv = document.createElement("div");
+   newDiv.textContent = "Hello, World!";
+   elem.appendChild(newDiv);
+   
+   // Event handling
+   var button = document.querySelector("#submit-btn");
+   button.addEventListener("click", function() {
+       console.log("Button clicked!");
+   });
    ```
+   
+   See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) for complete API reference.
 
 ## Development
 
@@ -179,6 +196,7 @@ The browser demonstrates web functionality by:
 
 ### Key Documentation
 
+- **[DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)**: Comprehensive DOM API reference and examples
 - **[ASYNC_ARCHITECTURE.md](ASYNC_ARCHITECTURE.md)**: Async fetch/render architecture
 - **[PERFORMANCE.md](PERFORMANCE.md)**: Viewport culling and display list caching
 - **[RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md)**: Multi-tree rendering system
@@ -186,11 +204,11 @@ The browser demonstrates web functionality by:
 
 ### Adding Features
 
-To add new JavaScript APIs, edit `internal/js/runtime.go`:
+Goosie now includes comprehensive DOM APIs (see [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)). To add additional JavaScript APIs, edit `internal/js/runtime.go`:
 
 ```go
-// Add new DOM API
-document.Set("querySelector", func(call goja.FunctionCall) goja.Value {
+// Example: Add a custom API
+document.Set("customMethod", func(call goja.FunctionCall) goja.Value {
     // Implementation
 })
 ```
