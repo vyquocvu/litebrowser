@@ -54,15 +54,15 @@ This document outlines the planned features and improvements for the Goosie proj
 ## Phase 1: Essential Browser Features (v0.5.0)
 
 ### UI Improvements
-- [ ] Status bar showing loading progress
-- [ ] Error messages for failed page loads
-- [ ] Tab support for multiple pages
-- [ ] Settings/preferences dialog
+- [x] Status bar showing loading progress
+- [x] Error messages for failed page loads
+- [x] Tab support for multiple pages
+- [x] Settings/preferences dialog
 
 ### Enhanced HTML Support
 - [ ] CSS basic styling support (colors, fonts, sizes)
-- [ ] Full image rendering (PNG, JPEG, GIF)
-- [ ] Interactive link click handling
+- [x] Full image rendering (PNG, JPEG, GIF)
+- [x] Interactive link click handling
 - [ ] Form elements rendering (input, button, textarea)
 - [ ] Table rendering
 
