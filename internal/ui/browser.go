@@ -40,6 +40,7 @@ type Browser struct {
 	app                 fyne.App
 	window              fyne.Window
 	state               *BrowserState
+	settings            *Settings
 	urlEntry            *widget.Entry
 	backButton          *widget.Button
 	forwardButton       *widget.Button
@@ -81,6 +82,7 @@ func NewBrowser() *Browser {
 	w.Resize(fyne.NewSize(1000, 700))
 
 	state := NewBrowserState()
+	settings := NewSettings()
 
 	// Create thin, full-width loading progress bar with 5px height (initially hidden)
 	loadingBar := widget.NewProgressBar()
@@ -94,6 +96,7 @@ func NewBrowser() *Browser {
 		app:                 a,
 		window:              w,
 		state:               state,
+		settings:            settings,
 		loadingBar:          loadingBar,
 		loadingBarContainer: loadingBarContainer,
 		tabItems:            []*Tab{},
@@ -279,8 +282,7 @@ func (b *Browser) createNavigationControls() {
 
 	// Settings button
 	b.settingsButton = widget.NewButton("⚙", func() {
-		d := dialog.NewInformation("Settings", "Settings are not yet implemented.", b.window)
-		d.Show()
+		b.showSettings()
 	})
 }
 
@@ -408,4 +410,54 @@ func (b *Browser) UpdateActiveTabTitle(title string) {
 // GetApp returns the Fyne application instance for thread-safe operations
 func (b *Browser) GetApp() fyne.App {
 	return b.app
+}
+
+// GetSettings returns the browser settings
+func (b *Browser) GetSettings() *Settings {
+	return b.settings
+}
+
+// showSettings displays the settings dialog
+func (b *Browser) showSettings() {
+	// Create form entries for settings
+	homepageEntry := widget.NewEntry()
+	homepageEntry.SetText(b.settings.GetHomepage())
+	homepageEntry.SetPlaceHolder("https://example.com")
+
+	searchEngineEntry := widget.NewEntry()
+	searchEngineEntry.SetText(b.settings.GetDefaultSearchEngine())
+	searchEngineEntry.SetPlaceHolder("https://www.google.com/search?q=")
+
+	jsCheck := widget.NewCheck("Enable JavaScript", func(checked bool) {
+		b.settings.SetEnableJavaScript(checked)
+	})
+	jsCheck.SetChecked(b.settings.GetEnableJavaScript())
+
+	imagesCheck := widget.NewCheck("Enable Images", func(checked bool) {
+		b.settings.SetEnableImages(checked)
+	})
+	imagesCheck.SetChecked(b.settings.GetEnableImages())
+
+	// Create form
+	form := &widget.Form{
+		Items: []*widget.FormItem{
+			{Text: "Homepage", Widget: homepageEntry},
+			{Text: "Search Engine", Widget: searchEngineEntry},
+			{Text: "", Widget: jsCheck},
+			{Text: "", Widget: imagesCheck},
+		},
+		OnSubmit: func() {
+			// Save settings
+			b.settings.SetHomepage(homepageEntry.Text)
+			b.settings.SetDefaultSearchEngine(searchEngineEntry.Text)
+		},
+		OnCancel: func() {
+			// Do nothing, just close
+		},
+	}
+
+	// Create custom dialog
+	d := dialog.NewCustom("Settings", "Close", form, b.window)
+	d.Resize(fyne.NewSize(500, 300))
+	d.Show()
 }
