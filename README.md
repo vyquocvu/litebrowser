@@ -27,6 +27,13 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
   - DOM manipulation: `appendChild()`, `removeChild()`, `replaceChild()`, `insertBefore()`
   - Event handling: `addEventListener()`, `removeEventListener()`
   - See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) for complete API reference and examples
+- **Browser APIs**: Full browser environment with essential web APIs
+  - window.location: URL manipulation and query parameters
+  - window.history: Session history and navigation
+  - Timers: `setTimeout()`, `setInterval()` with automatic cleanup
+  - Network: `fetch()` API for HTTP requests
+  - Storage: `localStorage` and `sessionStorage` with validation
+  - See [BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md) for complete API reference and best practices
 - **GUI**: Display rendered content in a Fyne window titled "Goosie"
 - **Navigation**: Full-featured navigation system
   - URL bar for entering web addresses
@@ -161,25 +168,41 @@ The browser demonstrates web functionality by:
    - Supports headings, paragraphs, lists, links, and images
 5. **History**: Navigate back and forward through visited pages
 6. **Bookmarks**: Save and manage favorite pages with visual indicators
-7. **JavaScript**: Runs JavaScript with Goja, supporting comprehensive DOM APIs:
+7. **JavaScript**: Runs JavaScript with Goja, supporting comprehensive DOM and Browser APIs:
    ```javascript
-   // Query elements
+   // DOM APIs - Query and manipulate elements
    var elem = document.getElementById("main-content");
    var items = document.querySelectorAll(".list-item");
    
-   // Manipulate DOM
    var newDiv = document.createElement("div");
    newDiv.textContent = "Hello, World!";
    elem.appendChild(newDiv);
    
-   // Event handling
-   var button = document.querySelector("#submit-btn");
-   button.addEventListener("click", function() {
-       console.log("Button clicked!");
-   });
+   // Browser APIs - Location and History
+   window.location.setURL("https://example.com?page=1");
+   var page = window.location.getQueryParam("page");
+   window.history.pushState({}, "Page Title", "/new-page");
+   
+   // Timers and Async Operations
+   setTimeout(function() {
+       console.log("Delayed execution");
+   }, 1000);
+   
+   // Network Requests
+   fetch("https://api.example.com/data")
+       .then(function(response) {
+           return response.json();
+       })
+       .then(function(data) {
+           console.log("Data:", data);
+       });
+   
+   // Storage APIs
+   localStorage.setItem("theme", "dark");
+   var theme = localStorage.getItem("theme");
    ```
    
-   See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) for complete API reference.
+   See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) and [BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md) for complete API references.
 
 ## Development
 
@@ -197,6 +220,7 @@ The browser demonstrates web functionality by:
 ### Key Documentation
 
 - **[DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)**: Comprehensive DOM API reference and examples
+- **[BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md)**: Browser APIs (location, history, timers, fetch, storage)
 - **[ASYNC_ARCHITECTURE.md](ASYNC_ARCHITECTURE.md)**: Async fetch/render architecture
 - **[PERFORMANCE.md](PERFORMANCE.md)**: Viewport culling and display list caching
 - **[RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md)**: Multi-tree rendering system
@@ -204,7 +228,7 @@ The browser demonstrates web functionality by:
 
 ### Adding Features
 
-Goosie now includes comprehensive DOM APIs (see [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)). To add additional JavaScript APIs, edit `internal/js/runtime.go`:
+Goosie includes comprehensive DOM APIs (see [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)) and browser APIs (see [BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md)). To add additional JavaScript APIs, edit `internal/js/runtime.go`:
 
 ```go
 // Example: Add a custom API
@@ -212,6 +236,10 @@ document.Set("customMethod", func(call goja.FunctionCall) goja.Value {
     // Implementation
 })
 ```
+
+The browser includes:
+- **DOM APIs**: Query selectors, element manipulation, event handling
+- **Browser APIs**: window.location, window.history, timers, fetch, storage
 
 To add new UI features, edit `internal/ui/browser.go`:
 
