@@ -2,7 +2,7 @@
 
 This document outlines the planned features and improvements for the Goosie project. The roadmap is organized into phases based on priority and complexity.
 
-## Current Status (v0.3.0)
+## Current Status (v0.4.0)
 
 ✅ **Core Foundation**
 - HTTP fetching with Go's net/http
@@ -35,7 +35,23 @@ This document outlines the planned features and improvements for the Goosie proj
 - Text styling support (bold, italic)
 - HTML hierarchy preservation
 
-## Phase 1: Essential Browser Features (v0.4.0)
+✅ **DOM API Extensions**
+- `document.querySelector()` and `querySelectorAll()`
+- `document.getElementsByClassName()`
+- `document.getElementsByTagName()`
+- Element creation (`document.createElement()`)
+- Element manipulation (appendChild, removeChild, replaceChild, insertBefore)
+- Event listeners (addEventListener, removeEventListener)
+
+✅ **Browser APIs**
+- `window.location` object with query parameter utilities
+- `window.history` API with state management
+- `setTimeout()` and `setInterval()` with memory leak prevention
+- `fetch()` API for AJAX requests
+- Local storage API with data validation and versioning
+- Session storage API with standardized schema
+
+## Phase 1: Essential Browser Features (v0.5.0)
 
 ### UI Improvements
 - [ ] Status bar showing loading progress
@@ -50,23 +66,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Form elements rendering (input, button, textarea)
 - [ ] Table rendering
 
-## Phase 2: Enhanced JavaScript Support (v0.5.0)
-
-### DOM API Extensions
-- [ ] `document.querySelector()` and `querySelectorAll()`
-- [ ] `document.getElementsByClassName()`
-- [ ] `document.getElementsByTagName()`
-- [ ] Element creation (`document.createElement()`)
-- [ ] Element manipulation (appendChild, removeChild, etc.)
-- [ ] Event listeners (addEventListener, removeEventListener)
-
-### Browser APIs
-- [ ] `window.location` object
-- [ ] `window.history` API
-- [ ] `setTimeout()` and `setInterval()`
-- [ ] `fetch()` API for AJAX requests
-- [ ] Local storage API
-- [ ] Session storage API
+## Phase 2: Enhanced JavaScript Support (v0.6.0)
 
 ### Enhanced Console
 - [ ] `console.error()`, `console.warn()`, `console.info()`
@@ -74,7 +74,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Console panel in the browser UI
 - [ ] JavaScript error reporting in UI
 
-## Phase 3: Advanced Features (v0.6.0)
+## Phase 3: Advanced Features (v0.7.0)
 
 ### CSS Support
 - [ ] Full CSS parser
@@ -99,7 +99,7 @@ This document outlines the planned features and improvements for the Goosie proj
 - [ ] Memory optimization
 - [ ] Lazy loading for images
 
-## Phase 4: Developer Tools (v0.7.0)
+## Phase 4: Developer Tools (v0.8.0)
 
 ### Debugging Tools
 - [ ] Inspect element functionality
@@ -212,4 +212,4 @@ Have suggestions for the roadmap? Please:
 
 ---
 
-*Last updated: October 2025*
+*Last updated: October 2025 - v0.4.0 includes comprehensive browser APIs*
