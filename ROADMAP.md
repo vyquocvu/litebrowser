@@ -61,7 +61,7 @@ This document outlines the planned features and improvements for the Goosie proj
 
 ### Enhanced HTML Support
 - [ ] CSS basic styling support (colors, fonts, sizes)
-- [x] Full image rendering (PNG, JPEG, GIF)
+- [x] Full image rendering (PNG, JPEG, GIF, WebP)
 - [x] Interactive link click handling
 - [ ] Form elements rendering (input, button, textarea)
 - [ ] Table rendering
