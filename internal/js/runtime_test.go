@@ -815,3 +815,73 @@ if len(runtime.timers) != 0 {
 t.Errorf("Expected 0 timers after cleanup, got %d", len(runtime.timers))
 }
 }
+
+func TestLocationSearchAndHashPrefixes(t *testing.T) {
+runtime := NewRuntime()
+
+// Set URL with query and hash
+runtime.RunScript(`window.location.setURL("https://example.com/path?key=value#section");`)
+
+// Test search includes '?' prefix
+val, err := runtime.RunScript(`window.location.search`)
+if err != nil {
+t.Errorf("search failed: %v", err)
+}
+if val.String() != "?key=value" {
+t.Errorf("Expected search '?key=value', got %s", val.String())
+}
+
+// Test hash includes '#' prefix
+val, err = runtime.RunScript(`window.location.hash`)
+if err != nil {
+t.Errorf("hash failed: %v", err)
+}
+if val.String() != "#section" {
+t.Errorf("Expected hash '#section', got %s", val.String())
+}
+
+// Test empty query and hash
+runtime.RunScript(`window.location.setURL("https://example.com/path");`)
+
+val, _ = runtime.RunScript(`window.location.search`)
+if val.String() != "" {
+t.Errorf("Expected empty search, got %s", val.String())
+}
+
+val, _ = runtime.RunScript(`window.location.hash`)
+if val.String() != "" {
+t.Errorf("Expected empty hash, got %s", val.String())
+}
+}
+
+func TestClearTimeoutMultipleTimes(t *testing.T) {
+runtime := NewRuntime()
+defer runtime.Cleanup()
+
+// Create a timer and clear it multiple times
+_, err := runtime.RunScript(`
+var timerId = setTimeout(function() {}, 1000);
+clearTimeout(timerId);
+clearTimeout(timerId); // Should not panic
+clearTimeout(timerId); // Should not panic
+`)
+if err != nil {
+t.Errorf("clearTimeout multiple times failed: %v", err)
+}
+}
+
+func TestClearIntervalMultipleTimes(t *testing.T) {
+runtime := NewRuntime()
+defer runtime.Cleanup()
+
+// Create an interval and clear it multiple times
+_, err := runtime.RunScript(`
+var intervalId = setInterval(function() {}, 1000);
+clearInterval(intervalId);
+clearInterval(intervalId); // Should not panic
+clearInterval(intervalId); // Should not panic
+`)
+if err != nil {
+t.Errorf("clearInterval multiple times failed: %v", err)
+}
+}

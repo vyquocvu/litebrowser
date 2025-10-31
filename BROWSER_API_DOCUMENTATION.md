@@ -27,8 +27,8 @@ The `window.location` object provides access to and manipulation of the current 
 - **`hostname`** - Hostname only
 - **`port`** - Port number
 - **`pathname`** - Path portion of the URL
-- **`search`** - Query string (without the '?')
-- **`hash`** - Fragment identifier (without the '#')
+- **`search`** - Query string (including the '?')
+- **`hash`** - Fragment identifier (including the '#')
 
 ### Methods
 
@@ -48,8 +48,8 @@ window.location.setURL("https://example.com:8080/path?key=value#section");
 console.log(window.location.protocol);  // "https:"
 console.log(window.location.hostname);  // "example.com"
 console.log(window.location.pathname);  // "/path"
-console.log(window.location.search);    // "key=value"
-console.log(window.location.hash);      // "section"
+console.log(window.location.search);    // "?key=value"
+console.log(window.location.hash);      // "#section"
 ```
 
 #### `getQueryParam(name)`

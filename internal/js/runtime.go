@@ -21,6 +21,7 @@ type Timer struct {
 	Ticker   *time.Ticker
 	Cancel   chan bool
 	mu       sync.Mutex
+	stopped  bool  // Track if timer has been stopped
 }
 
 // Runtime wraps the Goja JavaScript runtime
@@ -524,8 +525,20 @@ func (r *Runtime) setupLocationAPI(window *goja.Object) {
 		location.Set("hostname", parsedURL.Hostname())
 		location.Set("port", parsedURL.Port())
 		location.Set("pathname", parsedURL.Path)
-		location.Set("search", parsedURL.RawQuery)
-		location.Set("hash", parsedURL.Fragment)
+		
+		// Add '?' prefix to search if query exists
+		search := ""
+		if parsedURL.RawQuery != "" {
+			search = "?" + parsedURL.RawQuery
+		}
+		location.Set("search", search)
+		
+		// Add '#' prefix to hash if fragment exists
+		hash := ""
+		if parsedURL.Fragment != "" {
+			hash = "#" + parsedURL.Fragment
+		}
+		location.Set("hash", hash)
 		
 		return goja.Undefined()
 	})
@@ -583,7 +596,13 @@ func (r *Runtime) setupLocationAPI(window *goja.Object) {
 		
 		newURL := parsedURL.String()
 		location.Set("href", newURL)
-		location.Set("search", parsedURL.RawQuery)
+		
+		// Update search with '?' prefix
+		search := ""
+		if parsedURL.RawQuery != "" {
+			search = "?" + parsedURL.RawQuery
+		}
+		location.Set("search", search)
 		
 		return r.vm.ToValue(newURL)
 	})
@@ -908,9 +927,12 @@ func (r *Runtime) setupTimerAPIs() {
 		timer, exists := r.timers[timerID]
 		if exists {
 			timer.mu.Lock()
-			close(timer.Cancel)
-			if timer.Timer != nil {
-				timer.Timer.Stop()
+			if !timer.stopped {
+				close(timer.Cancel)
+				timer.stopped = true
+				if timer.Timer != nil {
+					timer.Timer.Stop()
+				}
 			}
 			timer.mu.Unlock()
 			delete(r.timers, timerID)
@@ -973,9 +995,12 @@ func (r *Runtime) setupTimerAPIs() {
 		timer, exists := r.timers[timerID]
 		if exists {
 			timer.mu.Lock()
-			close(timer.Cancel)
-			if timer.Ticker != nil {
-				timer.Ticker.Stop()
+			if !timer.stopped {
+				close(timer.Cancel)
+				timer.stopped = true
+				if timer.Ticker != nil {
+					timer.Ticker.Stop()
+				}
 			}
 			timer.mu.Unlock()
 			delete(r.timers, timerID)
@@ -1078,12 +1103,15 @@ func (r *Runtime) createRejectedPromise(errMsg string) *goja.Object {
 func (r *Runtime) Cleanup() {
 	for _, timer := range r.timers {
 		timer.mu.Lock()
-		close(timer.Cancel)
-		if timer.Timer != nil {
-			timer.Timer.Stop()
-		}
-		if timer.Ticker != nil {
-			timer.Ticker.Stop()
+		if !timer.stopped {
+			close(timer.Cancel)
+			timer.stopped = true
+			if timer.Timer != nil {
+				timer.Timer.Stop()
+			}
+			if timer.Ticker != nil {
+				timer.Ticker.Stop()
+			}
 		}
 		timer.mu.Unlock()
 	}
