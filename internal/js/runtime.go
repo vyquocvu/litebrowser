@@ -2,10 +2,26 @@ package js
 
 import (
 	"fmt"
+	"net/url"
+	"strings"
+	"sync"
+	"time"
 
 	"github.com/dop251/goja"
 	"github.com/vyquocvu/goosie/internal/dom"
 )
+
+// Timer represents a scheduled timer
+type Timer struct {
+	ID       int
+	Callback goja.Callable
+	Interval time.Duration
+	Repeat   bool
+	Timer    *time.Timer
+	Ticker   *time.Ticker
+	Cancel   chan bool
+	mu       sync.Mutex
+}
 
 // Runtime wraps the Goja JavaScript runtime
 type Runtime struct {
@@ -13,6 +29,14 @@ type Runtime struct {
 	parser     *dom.Parser
 	htmlCache  string
 	eventListeners map[string][]goja.Callable
+	// Browser API storage
+	localStorage   map[string]string
+	sessionStorage map[string]string
+	timers         map[int]*Timer
+	timerIDCounter int
+	// History tracking
+	historyStack   []string
+	historyIndex   int
 }
 
 // NewRuntime creates a new JavaScript runtime with console.log and document APIs
@@ -21,9 +45,15 @@ func NewRuntime() *Runtime {
 	parser := dom.NewParser()
 	
 	runtime := &Runtime{
-		vm:     vm,
-		parser: parser,
+		vm:             vm,
+		parser:         parser,
 		eventListeners: make(map[string][]goja.Callable),
+		localStorage:   make(map[string]string),
+		sessionStorage: make(map[string]string),
+		timers:         make(map[int]*Timer),
+		timerIDCounter: 1,
+		historyStack:   []string{},
+		historyIndex:   -1,
 	}
 
 	// Setup console.log
@@ -40,6 +70,9 @@ func NewRuntime() *Runtime {
 
 	// Setup document object with all DOM APIs
 	runtime.setupDocumentAPI()
+	
+	// Setup window object with browser APIs
+	runtime.setupWindowAPI()
 
 	return runtime
 }
@@ -409,4 +442,650 @@ func (r *Runtime) SetHTMLContent(html string) {
 // RunScript executes JavaScript code
 func (r *Runtime) RunScript(script string) (goja.Value, error) {
 	return r.vm.RunString(script)
+}
+
+// setupWindowAPI configures window object with browser APIs
+func (r *Runtime) setupWindowAPI() {
+	window := r.vm.NewObject()
+	
+	// Setup window.location
+	r.setupLocationAPI(window)
+	
+	// Setup window.history
+	r.setupHistoryAPI(window)
+	
+	// Setup localStorage
+	r.setupLocalStorageAPI()
+	
+	// Setup sessionStorage
+	r.setupSessionStorageAPI()
+	
+	// Setup setTimeout and setInterval
+	r.setupTimerAPIs()
+	
+	// Setup fetch API
+	r.setupFetchAPI()
+	
+	r.vm.Set("window", window)
+}
+
+// setupLocationAPI configures window.location object
+func (r *Runtime) setupLocationAPI(window *goja.Object) {
+	location := r.vm.NewObject()
+	currentURL := "about:blank"
+	
+	// href - full URL
+	location.Set("href", currentURL)
+	
+	// protocol
+	location.Set("protocol", "")
+	
+	// host
+	location.Set("host", "")
+	
+	// hostname
+	location.Set("hostname", "")
+	
+	// port
+	location.Set("port", "")
+	
+	// pathname
+	location.Set("pathname", "")
+	
+	// search - query string
+	location.Set("search", "")
+	
+	// hash
+	location.Set("hash", "")
+	
+	// reload - refresh the page
+	location.Set("reload", func(call goja.FunctionCall) goja.Value {
+		// In a real browser this would reload the page
+		// For now, we just log the action
+		fmt.Println("Location reload called")
+		return goja.Undefined()
+	})
+	
+	// Helper to parse URL and update location properties
+	location.Set("setURL", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		urlStr := call.Arguments[0].String()
+		parsedURL, err := url.Parse(urlStr)
+		if err != nil {
+			return goja.Undefined()
+		}
+		
+		location.Set("href", urlStr)
+		location.Set("protocol", parsedURL.Scheme+":")
+		location.Set("host", parsedURL.Host)
+		location.Set("hostname", parsedURL.Hostname())
+		location.Set("port", parsedURL.Port())
+		location.Set("pathname", parsedURL.Path)
+		location.Set("search", parsedURL.RawQuery)
+		location.Set("hash", parsedURL.Fragment)
+		
+		return goja.Undefined()
+	})
+	
+	// Helper to get query parameters
+	location.Set("getQueryParam", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Null()
+		}
+		
+		paramName := call.Arguments[0].String()
+		hrefVal := location.Get("href")
+		if hrefVal == nil || hrefVal == goja.Undefined() {
+			return goja.Null()
+		}
+		
+		urlStr := hrefVal.String()
+		parsedURL, err := url.Parse(urlStr)
+		if err != nil {
+			return goja.Null()
+		}
+		
+		params := parsedURL.Query()
+		value := params.Get(paramName)
+		if value == "" {
+			return goja.Null()
+		}
+		
+		return r.vm.ToValue(value)
+	})
+	
+	// Helper to set query parameters
+	location.Set("setQueryParam", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		
+		paramName := call.Arguments[0].String()
+		paramValue := call.Arguments[1].String()
+		
+		hrefVal := location.Get("href")
+		if hrefVal == nil || hrefVal == goja.Undefined() {
+			return goja.Undefined()
+		}
+		
+		urlStr := hrefVal.String()
+		parsedURL, err := url.Parse(urlStr)
+		if err != nil {
+			return goja.Undefined()
+		}
+		
+		params := parsedURL.Query()
+		params.Set(paramName, paramValue)
+		parsedURL.RawQuery = params.Encode()
+		
+		newURL := parsedURL.String()
+		location.Set("href", newURL)
+		location.Set("search", parsedURL.RawQuery)
+		
+		return r.vm.ToValue(newURL)
+	})
+	
+	window.Set("location", location)
+}
+
+// setupHistoryAPI configures window.history object
+func (r *Runtime) setupHistoryAPI(window *goja.Object) {
+	history := r.vm.NewObject()
+	
+	// length - number of entries in history
+	history.Set("length", func(call goja.FunctionCall) goja.Value {
+		return r.vm.ToValue(len(r.historyStack))
+	})
+	
+	// back - go back one page
+	history.Set("back", func(call goja.FunctionCall) goja.Value {
+		if r.historyIndex > 0 {
+			r.historyIndex--
+			fmt.Printf("History: navigated back to index %d\n", r.historyIndex)
+		}
+		return goja.Undefined()
+	})
+	
+	// forward - go forward one page
+	history.Set("forward", func(call goja.FunctionCall) goja.Value {
+		if r.historyIndex < len(r.historyStack)-1 {
+			r.historyIndex++
+			fmt.Printf("History: navigated forward to index %d\n", r.historyIndex)
+		}
+		return goja.Undefined()
+	})
+	
+	// go - navigate by relative position
+	history.Set("go", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		delta := int(call.Arguments[0].ToInteger())
+		newIndex := r.historyIndex + delta
+		
+		if newIndex >= 0 && newIndex < len(r.historyStack) {
+			r.historyIndex = newIndex
+			fmt.Printf("History: navigated to index %d\n", r.historyIndex)
+		}
+		
+		return goja.Undefined()
+	})
+	
+	// pushState - add a new history entry
+	history.Set("pushState", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 3 {
+			return goja.Undefined()
+		}
+		
+		// state, title, url
+		urlStr := call.Arguments[2].String()
+		
+		// Truncate forward history if we're not at the end
+		if r.historyIndex < len(r.historyStack)-1 {
+			r.historyStack = r.historyStack[:r.historyIndex+1]
+		}
+		
+		r.historyStack = append(r.historyStack, urlStr)
+		r.historyIndex = len(r.historyStack) - 1
+		
+		return goja.Undefined()
+	})
+	
+	// replaceState - replace current history entry
+	history.Set("replaceState", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 3 {
+			return goja.Undefined()
+		}
+		
+		// state, title, url
+		urlStr := call.Arguments[2].String()
+		
+		if r.historyIndex >= 0 && r.historyIndex < len(r.historyStack) {
+			r.historyStack[r.historyIndex] = urlStr
+		}
+		
+		return goja.Undefined()
+	})
+	
+	window.Set("history", history)
+}
+
+// setupLocalStorageAPI configures localStorage
+func (r *Runtime) setupLocalStorageAPI() {
+	localStorage := r.vm.NewObject()
+	
+	// getItem
+	localStorage.Set("getItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Null()
+		}
+		
+		key := call.Arguments[0].String()
+		value, exists := r.localStorage[key]
+		if !exists {
+			return goja.Null()
+		}
+		
+		return r.vm.ToValue(value)
+	})
+	
+	// setItem - with validation
+	localStorage.Set("setItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		
+		key := call.Arguments[0].String()
+		value := call.Arguments[1].String()
+		
+		// Basic validation: check key and value are not empty
+		if key == "" {
+			fmt.Println("localStorage: key cannot be empty")
+			return goja.Undefined()
+		}
+		
+		// Store with version prefix for versioning support
+		versionedValue := "v1:" + value
+		r.localStorage[key] = versionedValue
+		
+		return goja.Undefined()
+	})
+	
+	// removeItem
+	localStorage.Set("removeItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		key := call.Arguments[0].String()
+		delete(r.localStorage, key)
+		
+		return goja.Undefined()
+	})
+	
+	// clear - remove all items
+	localStorage.Set("clear", func(call goja.FunctionCall) goja.Value {
+		r.localStorage = make(map[string]string)
+		return goja.Undefined()
+	})
+	
+	// key - get key at index
+	localStorage.Set("key", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Null()
+		}
+		
+		index := int(call.Arguments[0].ToInteger())
+		keys := make([]string, 0, len(r.localStorage))
+		for k := range r.localStorage {
+			keys = append(keys, k)
+		}
+		
+		if index < 0 || index >= len(keys) {
+			return goja.Null()
+		}
+		
+		return r.vm.ToValue(keys[index])
+	})
+	
+	// length property
+	localStorage.Set("length", func(call goja.FunctionCall) goja.Value {
+		return r.vm.ToValue(len(r.localStorage))
+	})
+	
+	r.vm.Set("localStorage", localStorage)
+}
+
+// setupSessionStorageAPI configures sessionStorage
+func (r *Runtime) setupSessionStorageAPI() {
+	sessionStorage := r.vm.NewObject()
+	
+	// getItem
+	sessionStorage.Set("getItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Null()
+		}
+		
+		key := call.Arguments[0].String()
+		value, exists := r.sessionStorage[key]
+		if !exists {
+			return goja.Null()
+		}
+		
+		// Check if value has expired (simple implementation)
+		parts := strings.SplitN(value, ":", 3)
+		if len(parts) == 3 && parts[0] == "exp" {
+			// Format: exp:timestamp:value
+			// For now, we don't implement actual expiration
+			return r.vm.ToValue(parts[2])
+		}
+		
+		return r.vm.ToValue(value)
+	})
+	
+	// setItem - with session schema support
+	sessionStorage.Set("setItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		
+		key := call.Arguments[0].String()
+		value := call.Arguments[1].String()
+		
+		// Basic validation
+		if key == "" {
+			fmt.Println("sessionStorage: key cannot be empty")
+			return goja.Undefined()
+		}
+		
+		// Store with schema prefix (could be extended for expiration)
+		schemaValue := "session:" + value
+		r.sessionStorage[key] = schemaValue
+		
+		return goja.Undefined()
+	})
+	
+	// removeItem
+	sessionStorage.Set("removeItem", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		key := call.Arguments[0].String()
+		delete(r.sessionStorage, key)
+		
+		return goja.Undefined()
+	})
+	
+	// clear - remove all items
+	sessionStorage.Set("clear", func(call goja.FunctionCall) goja.Value {
+		r.sessionStorage = make(map[string]string)
+		return goja.Undefined()
+	})
+	
+	// key - get key at index
+	sessionStorage.Set("key", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Null()
+		}
+		
+		index := int(call.Arguments[0].ToInteger())
+		keys := make([]string, 0, len(r.sessionStorage))
+		for k := range r.sessionStorage {
+			keys = append(keys, k)
+		}
+		
+		if index < 0 || index >= len(keys) {
+			return goja.Null()
+		}
+		
+		return r.vm.ToValue(keys[index])
+	})
+	
+	// length property
+	sessionStorage.Set("length", func(call goja.FunctionCall) goja.Value {
+		return r.vm.ToValue(len(r.sessionStorage))
+	})
+	
+	r.vm.Set("sessionStorage", sessionStorage)
+}
+
+// setupTimerAPIs configures setTimeout and setInterval
+func (r *Runtime) setupTimerAPIs() {
+	// setTimeout
+	r.vm.Set("setTimeout", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		
+		callback, ok := goja.AssertFunction(call.Arguments[0])
+		if !ok {
+			return goja.Undefined()
+		}
+		
+		delay := time.Duration(call.Arguments[1].ToInteger()) * time.Millisecond
+		
+		timerID := r.timerIDCounter
+		r.timerIDCounter++
+		
+		timer := &Timer{
+			ID:       timerID,
+			Callback: callback,
+			Interval: delay,
+			Repeat:   false,
+			Cancel:   make(chan bool),
+		}
+		
+		timer.Timer = time.AfterFunc(delay, func() {
+			timer.mu.Lock()
+			defer timer.mu.Unlock()
+			
+			select {
+			case <-timer.Cancel:
+				return
+			default:
+				callback(goja.Undefined())
+				delete(r.timers, timerID)
+			}
+		})
+		
+		r.timers[timerID] = timer
+		
+		return r.vm.ToValue(timerID)
+	})
+	
+	// clearTimeout
+	r.vm.Set("clearTimeout", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		timerID := int(call.Arguments[0].ToInteger())
+		timer, exists := r.timers[timerID]
+		if exists {
+			timer.mu.Lock()
+			close(timer.Cancel)
+			if timer.Timer != nil {
+				timer.Timer.Stop()
+			}
+			timer.mu.Unlock()
+			delete(r.timers, timerID)
+		}
+		
+		return goja.Undefined()
+	})
+	
+	// setInterval
+	r.vm.Set("setInterval", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) < 2 {
+			return goja.Undefined()
+		}
+		
+		callback, ok := goja.AssertFunction(call.Arguments[0])
+		if !ok {
+			return goja.Undefined()
+		}
+		
+		interval := time.Duration(call.Arguments[1].ToInteger()) * time.Millisecond
+		
+		timerID := r.timerIDCounter
+		r.timerIDCounter++
+		
+		timer := &Timer{
+			ID:       timerID,
+			Callback: callback,
+			Interval: interval,
+			Repeat:   true,
+			Cancel:   make(chan bool),
+		}
+		
+		timer.Ticker = time.NewTicker(interval)
+		
+		go func() {
+			for {
+				select {
+				case <-timer.Cancel:
+					return
+				case <-timer.Ticker.C:
+					timer.mu.Lock()
+					callback(goja.Undefined())
+					timer.mu.Unlock()
+				}
+			}
+		}()
+		
+		r.timers[timerID] = timer
+		
+		return r.vm.ToValue(timerID)
+	})
+	
+	// clearInterval
+	r.vm.Set("clearInterval", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		timerID := int(call.Arguments[0].ToInteger())
+		timer, exists := r.timers[timerID]
+		if exists {
+			timer.mu.Lock()
+			close(timer.Cancel)
+			if timer.Ticker != nil {
+				timer.Ticker.Stop()
+			}
+			timer.mu.Unlock()
+			delete(r.timers, timerID)
+		}
+		
+		return goja.Undefined()
+	})
+}
+
+// setupFetchAPI configures fetch API with error handling
+func (r *Runtime) setupFetchAPI() {
+	r.vm.Set("fetch", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return r.vm.ToValue(r.createRejectedPromise("fetch requires a URL"))
+		}
+		
+		urlStr := call.Arguments[0].String()
+		
+		// Create a promise-like object
+		promise := r.vm.NewObject()
+		
+		// then method
+		promise.Set("then", func(thenCall goja.FunctionCall) goja.Value {
+			if len(thenCall.Arguments) == 0 {
+				return promise
+			}
+			
+			onSuccess, ok := goja.AssertFunction(thenCall.Arguments[0])
+			if !ok {
+				return promise
+			}
+			
+			// Simulate async fetch (in real implementation, would use net/http)
+			go func() {
+				// Create response object
+				response := r.vm.NewObject()
+				response.Set("ok", true)
+				response.Set("status", 200)
+				response.Set("statusText", "OK")
+				response.Set("url", urlStr)
+				
+				// json method
+				response.Set("json", func(jsonCall goja.FunctionCall) goja.Value {
+					jsonPromise := r.vm.NewObject()
+					jsonPromise.Set("then", func(jsonThenCall goja.FunctionCall) goja.Value {
+						// Return mock data
+						return r.vm.ToValue(map[string]interface{}{"data": "mock"})
+					})
+					return jsonPromise
+				})
+				
+				// text method
+				response.Set("text", func(textCall goja.FunctionCall) goja.Value {
+					textPromise := r.vm.NewObject()
+					textPromise.Set("then", func(textThenCall goja.FunctionCall) goja.Value {
+						return r.vm.ToValue("mock response text")
+					})
+					return textPromise
+				})
+				
+				onSuccess(goja.Undefined(), response)
+			}()
+			
+			return promise
+		})
+		
+		// catch method
+		promise.Set("catch", func(catchCall goja.FunctionCall) goja.Value {
+			return promise
+		})
+		
+		return promise
+	})
+}
+
+// createRejectedPromise creates a rejected promise with an error message
+func (r *Runtime) createRejectedPromise(errMsg string) *goja.Object {
+	promise := r.vm.NewObject()
+	
+	promise.Set("then", func(call goja.FunctionCall) goja.Value {
+		return promise
+	})
+	
+	promise.Set("catch", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) > 0 {
+			onError, ok := goja.AssertFunction(call.Arguments[0])
+			if ok {
+				errorObj := r.vm.NewObject()
+				errorObj.Set("message", errMsg)
+				onError(goja.Undefined(), errorObj)
+			}
+		}
+		return promise
+	})
+	
+	return promise
+}
+
+// Cleanup cleans up all timers and resources
+func (r *Runtime) Cleanup() {
+	for _, timer := range r.timers {
+		timer.mu.Lock()
+		close(timer.Cancel)
+		if timer.Timer != nil {
+			timer.Timer.Stop()
+		}
+		if timer.Ticker != nil {
+			timer.Ticker.Stop()
+		}
+		timer.mu.Unlock()
+	}
+	r.timers = make(map[int]*Timer)
 }

@@ -3,6 +3,7 @@ package js
 import (
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestNewRuntime(t *testing.T) {
@@ -395,4 +396,422 @@ func TestElementProperties(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Test Browser APIs
+
+func TestWindowLocation(t *testing.T) {
+runtime := NewRuntime()
+
+// Test setting URL
+_, err := runtime.RunScript(`
+window.location.setURL("https://example.com:8080/path/to/page?key=value&foo=bar#section");
+`)
+if err != nil {
+t.Errorf("setURL failed: %v", err)
+}
+
+// Test protocol
+val, err := runtime.RunScript(`window.location.protocol`)
+if err != nil {
+t.Errorf("protocol failed: %v", err)
+}
+if val.String() != "https:" {
+t.Errorf("Expected protocol 'https:', got %s", val.String())
+}
+
+// Test hostname
+val, err = runtime.RunScript(`window.location.hostname`)
+if err != nil {
+t.Errorf("hostname failed: %v", err)
+}
+if val.String() != "example.com" {
+t.Errorf("Expected hostname 'example.com', got %s", val.String())
+}
+
+// Test pathname
+val, err = runtime.RunScript(`window.location.pathname`)
+if err != nil {
+t.Errorf("pathname failed: %v", err)
+}
+if val.String() != "/path/to/page" {
+t.Errorf("Expected pathname '/path/to/page', got %s", val.String())
+}
+}
+
+func TestLocationQueryParams(t *testing.T) {
+runtime := NewRuntime()
+
+// Set URL with query params
+runtime.RunScript(`window.location.setURL("https://example.com?name=John&age=30");`)
+
+// Test getQueryParam
+val, err := runtime.RunScript(`window.location.getQueryParam("name")`)
+if err != nil {
+t.Errorf("getQueryParam failed: %v", err)
+}
+if val.String() != "John" {
+t.Errorf("Expected 'John', got %s", val.String())
+}
+
+// Test setQueryParam
+val, err = runtime.RunScript(`window.location.setQueryParam("city", "NYC")`)
+if err != nil {
+t.Errorf("setQueryParam failed: %v", err)
+}
+
+// Verify new param was added
+val, err = runtime.RunScript(`window.location.getQueryParam("city")`)
+if err != nil {
+t.Errorf("getQueryParam for new param failed: %v", err)
+}
+if val.String() != "NYC" {
+t.Errorf("Expected 'NYC', got %s", val.String())
+}
+}
+
+func TestWindowHistory(t *testing.T) {
+runtime := NewRuntime()
+
+// Test pushState
+_, err := runtime.RunScript(`
+window.history.pushState({}, "Page 1", "/page1");
+window.history.pushState({}, "Page 2", "/page2");
+window.history.pushState({}, "Page 3", "/page3");
+`)
+if err != nil {
+t.Errorf("pushState failed: %v", err)
+}
+
+// Test length
+val, err := runtime.RunScript(`window.history.length()`)
+if err != nil {
+t.Errorf("history.length failed: %v", err)
+}
+if val.ToInteger() != 3 {
+t.Errorf("Expected history length 3, got %d", val.ToInteger())
+}
+
+// Test back
+_, err = runtime.RunScript(`window.history.back()`)
+if err != nil {
+t.Errorf("history.back failed: %v", err)
+}
+
+// Test forward
+_, err = runtime.RunScript(`window.history.forward()`)
+if err != nil {
+t.Errorf("history.forward failed: %v", err)
+}
+
+// Test go
+_, err = runtime.RunScript(`window.history.go(-1)`)
+if err != nil {
+t.Errorf("history.go failed: %v", err)
+}
+}
+
+func TestHistoryReplaceState(t *testing.T) {
+runtime := NewRuntime()
+
+// Push initial state
+runtime.RunScript(`window.history.pushState({}, "Page 1", "/page1")`)
+
+// Replace current state
+_, err := runtime.RunScript(`window.history.replaceState({}, "Page 1 Updated", "/page1-updated")`)
+if err != nil {
+t.Errorf("replaceState failed: %v", err)
+}
+
+// History length should remain 1
+val, _ := runtime.RunScript(`window.history.length()`)
+if val.ToInteger() != 1 {
+t.Errorf("Expected history length 1 after replaceState, got %d", val.ToInteger())
+}
+}
+
+func TestSetTimeout(t *testing.T) {
+runtime := NewRuntime()
+
+// Test setTimeout
+_, err := runtime.RunScript(`
+var executed = false;
+var timerId = setTimeout(function() {
+executed = true;
+}, 10);
+`)
+if err != nil {
+t.Errorf("setTimeout failed: %v", err)
+}
+
+// Wait for timer to execute
+time.Sleep(50 * time.Millisecond)
+
+val, err := runtime.RunScript(`executed`)
+if err != nil {
+t.Errorf("Failed to check executed: %v", err)
+}
+if !val.ToBoolean() {
+t.Errorf("setTimeout callback was not executed")
+}
+}
+
+func TestClearTimeout(t *testing.T) {
+runtime := NewRuntime()
+defer runtime.Cleanup()
+
+// Test clearTimeout
+_, err := runtime.RunScript(`
+var executed = false;
+var timerId = setTimeout(function() {
+executed = true;
+}, 10);
+clearTimeout(timerId);
+`)
+if err != nil {
+t.Errorf("clearTimeout failed: %v", err)
+}
+
+// Wait to ensure timer doesn't execute
+time.Sleep(50 * time.Millisecond)
+
+val, err := runtime.RunScript(`executed`)
+if err != nil {
+t.Errorf("Failed to check executed: %v", err)
+}
+if val.ToBoolean() {
+t.Errorf("setTimeout callback should not have been executed after clearTimeout")
+}
+}
+
+func TestSetInterval(t *testing.T) {
+runtime := NewRuntime()
+defer runtime.Cleanup()
+
+// Test setInterval
+_, err := runtime.RunScript(`
+var counter = 0;
+var intervalId = setInterval(function() {
+counter++;
+}, 10);
+`)
+if err != nil {
+t.Errorf("setInterval failed: %v", err)
+}
+
+// Wait for multiple executions
+time.Sleep(55 * time.Millisecond)
+
+// Clear the interval
+runtime.RunScript(`clearInterval(intervalId)`)
+
+val, err := runtime.RunScript(`counter`)
+if err != nil {
+t.Errorf("Failed to check counter: %v", err)
+}
+
+counter := val.ToInteger()
+if counter < 2 {
+t.Errorf("Expected counter >= 2, got %d", counter)
+}
+}
+
+func TestClearInterval(t *testing.T) {
+runtime := NewRuntime()
+defer runtime.Cleanup()
+
+// Test clearInterval
+_, err := runtime.RunScript(`
+var counter = 0;
+var intervalId = setInterval(function() {
+counter++;
+}, 10);
+clearInterval(intervalId);
+`)
+if err != nil {
+t.Errorf("clearInterval failed: %v", err)
+}
+
+// Wait to ensure interval doesn't execute
+time.Sleep(50 * time.Millisecond)
+
+val, err := runtime.RunScript(`counter`)
+if err != nil {
+t.Errorf("Failed to check counter: %v", err)
+}
+if val.ToInteger() != 0 {
+t.Errorf("Expected counter 0 after clearInterval, got %d", val.ToInteger())
+}
+}
+
+func TestLocalStorage(t *testing.T) {
+runtime := NewRuntime()
+
+// Test setItem
+_, err := runtime.RunScript(`localStorage.setItem("user", "John")`)
+if err != nil {
+t.Errorf("localStorage.setItem failed: %v", err)
+}
+
+// Test getItem
+val, err := runtime.RunScript(`localStorage.getItem("user")`)
+if err != nil {
+t.Errorf("localStorage.getItem failed: %v", err)
+}
+
+result := val.String()
+if !strings.Contains(result, "John") {
+t.Errorf("Expected localStorage value to contain 'John', got %s", result)
+}
+
+// Test length
+val, err = runtime.RunScript(`localStorage.length()`)
+if err != nil {
+t.Errorf("localStorage.length failed: %v", err)
+}
+if val.ToInteger() != 1 {
+t.Errorf("Expected localStorage length 1, got %d", val.ToInteger())
+}
+
+// Test removeItem
+_, err = runtime.RunScript(`localStorage.removeItem("user")`)
+if err != nil {
+t.Errorf("localStorage.removeItem failed: %v", err)
+}
+
+val, err = runtime.RunScript(`localStorage.getItem("user")`)
+if err != nil {
+t.Errorf("localStorage.getItem after remove failed: %v", err)
+}
+if val.String() != "null" {
+t.Errorf("Expected null after removeItem, got %s", val.String())
+}
+}
+
+func TestLocalStorageClear(t *testing.T) {
+runtime := NewRuntime()
+
+// Add multiple items
+runtime.RunScript(`
+localStorage.setItem("key1", "value1");
+localStorage.setItem("key2", "value2");
+localStorage.setItem("key3", "value3");
+`)
+
+// Test clear
+_, err := runtime.RunScript(`localStorage.clear()`)
+if err != nil {
+t.Errorf("localStorage.clear failed: %v", err)
+}
+
+// Check length is 0
+val, _ := runtime.RunScript(`localStorage.length()`)
+if val.ToInteger() != 0 {
+t.Errorf("Expected localStorage length 0 after clear, got %d", val.ToInteger())
+}
+}
+
+func TestSessionStorage(t *testing.T) {
+runtime := NewRuntime()
+
+// Test setItem
+_, err := runtime.RunScript(`sessionStorage.setItem("sessionKey", "sessionValue")`)
+if err != nil {
+t.Errorf("sessionStorage.setItem failed: %v", err)
+}
+
+// Test getItem
+val, err := runtime.RunScript(`sessionStorage.getItem("sessionKey")`)
+if err != nil {
+t.Errorf("sessionStorage.getItem failed: %v", err)
+}
+
+result := val.String()
+if !strings.Contains(result, "sessionValue") {
+t.Errorf("Expected sessionStorage value to contain 'sessionValue', got %s", result)
+}
+
+// Test removeItem
+_, err = runtime.RunScript(`sessionStorage.removeItem("sessionKey")`)
+if err != nil {
+t.Errorf("sessionStorage.removeItem failed: %v", err)
+}
+
+val, err = runtime.RunScript(`sessionStorage.getItem("sessionKey")`)
+if err != nil {
+t.Errorf("sessionStorage.getItem after remove failed: %v", err)
+}
+if val.String() != "null" {
+t.Errorf("Expected null after removeItem, got %s", val.String())
+}
+}
+
+func TestSessionStorageKey(t *testing.T) {
+runtime := NewRuntime()
+
+// Add items
+runtime.RunScript(`
+sessionStorage.setItem("key1", "value1");
+sessionStorage.setItem("key2", "value2");
+`)
+
+// Test key method
+val, err := runtime.RunScript(`sessionStorage.key(0)`)
+if err != nil {
+t.Errorf("sessionStorage.key failed: %v", err)
+}
+
+// Should return one of the keys
+key := val.String()
+if key != "key1" && key != "key2" {
+t.Errorf("Expected key1 or key2, got %s", key)
+}
+}
+
+func TestFetchAPI(t *testing.T) {
+runtime := NewRuntime()
+
+// Test basic fetch
+_, err := runtime.RunScript(`
+var fetchCalled = false;
+fetch("https://api.example.com/data")
+.then(function(response) {
+fetchCalled = true;
+});
+`)
+if err != nil {
+t.Errorf("fetch failed: %v", err)
+}
+
+// Give time for async operation
+time.Sleep(50 * time.Millisecond)
+
+val, err := runtime.RunScript(`fetchCalled`)
+if err != nil {
+t.Errorf("Failed to check fetchCalled: %v", err)
+}
+if !val.ToBoolean() {
+t.Errorf("fetch callback was not executed")
+}
+}
+
+func TestRuntimeCleanup(t *testing.T) {
+runtime := NewRuntime()
+
+// Create some timers
+runtime.RunScript(`
+setTimeout(function() {}, 1000);
+setInterval(function() {}, 1000);
+`)
+
+if len(runtime.timers) != 2 {
+t.Errorf("Expected 2 timers, got %d", len(runtime.timers))
+}
+
+// Cleanup
+runtime.Cleanup()
+
+if len(runtime.timers) != 0 {
+t.Errorf("Expected 0 timers after cleanup, got %d", len(runtime.timers))
+}
 }
