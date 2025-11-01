@@ -66,6 +66,13 @@ cache.Clear()
 
 The renderer automatically uses the image loader for `<img>` tags:
 
+**Main Renderer (`internal/renderer/renderer.go`):**
+- Resolves relative image URLs against the current page URL before loading
+- Supports absolute URLs (http://, https://)
+- Supports relative URLs (images/photo.jpg)
+- Supports root-relative URLs (/images/photo.jpg)
+- Supports parent directory references (../images/photo.jpg)
+
 **Canvas Renderer (`internal/renderer/canvas.go`):**
 - Receives image loader instance during initialization
 - Attempts to load images when rendering img elements
@@ -147,6 +154,24 @@ Potential improvements for the future:
 ```html
 <img src="https://example.com/image.png" alt="Description">
 ```
+
+### Relative Image URLs
+
+```html
+<!-- Relative path (resolved against current page URL) -->
+<img src="images/photo.jpg" alt="Photo">
+
+<!-- Root-relative path -->
+<img src="/images/logo.png" alt="Logo">
+
+<!-- Parent directory reference -->
+<img src="../assets/banner.jpg" alt="Banner">
+```
+
+**Example:** If the current page is `https://example.com/blog/post.html`:
+- `images/photo.jpg` resolves to `https://example.com/blog/images/photo.jpg`
+- `/images/logo.png` resolves to `https://example.com/images/logo.png`
+- `../assets/banner.jpg` resolves to `https://example.com/assets/banner.jpg`
 
 ### Local Image
 
