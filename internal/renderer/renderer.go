@@ -1,6 +1,7 @@
 package renderer
 
 import (
+	"net/url"
 	"strings"
 
 	"fyne.io/fyne/v2"
@@ -206,8 +207,10 @@ func (r *Renderer) SetWindow(w fyne.Window) {
 func (r *Renderer) loadImages(node *RenderNode) {
 	if node.TagName == "img" {
 		if src, ok := node.GetAttribute("src"); ok {
+			// Resolve relative URLs before loading
+			resolvedSrc := r.resolveURL(src)
 			go func() {
-				img, err := r.imageLoader.Load(src)
+				img, err := r.imageLoader.Load(resolvedSrc)
 				if err == nil {
 					node.ImageData = img
 				}
@@ -217,6 +220,35 @@ func (r *Renderer) loadImages(node *RenderNode) {
 	for _, child := range node.Children {
 		r.loadImages(child)
 	}
+}
+
+// resolveURL resolves a relative or absolute URL against the current page URL
+func (r *Renderer) resolveURL(href string) string {
+	// If href is already absolute, return as-is
+	if strings.HasPrefix(href, "http://") || strings.HasPrefix(href, "https://") {
+		return href
+	}
+
+	// If no current URL, return href as-is
+	if r.currentURL == "" {
+		return href
+	}
+
+	// Parse current URL
+	baseURL, err := url.Parse(r.currentURL)
+	if err != nil {
+		return href
+	}
+
+	// Parse relative href
+	relURL, err := url.Parse(href)
+	if err != nil {
+		return href
+	}
+
+	// Resolve relative URL against base
+	resolved := baseURL.ResolveReference(relURL)
+	return resolved.String()
 }
 
 func (r *Renderer) onImageLoaded(src string) {
