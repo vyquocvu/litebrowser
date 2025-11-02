@@ -62,9 +62,7 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 	// Launch background goroutine for fetch and render
 	go func() {
 		// Fetch the page in background
-		html, err := fetcher.FetchWithContext(ctx, url, func(progress float64) {
-			browser.UpdateLoadingProgress(progress)
-		})
+		html, err := fetcher.FetchWithContext(ctx, url, nil)
 
 		// Check if context was cancelled
 		if ctx.Err() != nil {

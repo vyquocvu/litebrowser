@@ -47,7 +47,7 @@ type Browser struct {
 	refreshButton       *widget.Button
 	bookmarkButton      *widget.Button
 	settingsButton      *widget.Button
-	loadingBar          *widget.ProgressBar
+	loadingBar          *widget.ProgressBarInfinite
 	loadingBarContainer *fyne.Container
 	onNavigate          NavigationCallback
 	tabs                *container.DocTabs
@@ -85,7 +85,7 @@ func NewBrowser() *Browser {
 	settings := NewSettings()
 
 	// Create thin, full-width loading progress bar with 5px height (initially hidden)
-	loadingBar := widget.NewProgressBar()
+	loadingBar := widget.NewProgressBarInfinite()
 	loadingBar.Hide()
 
 	// Wrap the progress bar in a container with fixed height of 5px
@@ -372,7 +372,6 @@ func (b *Browser) GetHistory() []string {
 func (b *Browser) ShowLoading() {
 	// Use fyne.Do to ensure UI updates happen on the main thread
 	fyne.Do(func() {
-		b.loadingBar.SetValue(0)
 		b.loadingBarContainer.Show()
 		b.loadingBar.Show()
 	})
@@ -384,13 +383,6 @@ func (b *Browser) HideLoading() {
 	fyne.Do(func() {
 		b.loadingBar.Hide()
 		b.loadingBarContainer.Hide()
-	})
-}
-
-// UpdateLoadingProgress updates the loading progress bar
-func (b *Browser) UpdateLoadingProgress(value float64) {
-	fyne.Do(func() {
-		b.loadingBar.SetValue(value)
 	})
 }
 
