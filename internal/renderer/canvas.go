@@ -176,10 +176,16 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 		cr.renderTextarea(node, objects)
 	case "table":
 		cr.renderTable(node, objects)
+	case "tbody", "thead", "tfoot":
+		// Table section elements. Usually handled by renderTable when inside a <table>,
+		// but if encountered independently (edge case), render children as block elements.
+		for _, child := range node.Children {
+			cr.renderNode(child, objects)
+		}
 	case "tr":
-		// Handled by renderTable
-	case "td":
-		// Handled by renderTable
+		// Table row. Usually handled by renderTable, but render children if standalone.
+	case "td", "th":
+		// Table cells. Usually handled by renderTable, but render children if standalone.
 	case "br":
 		// Add a spacer for line break
 		*objects = append(*objects, widget.NewLabel(""))
@@ -209,15 +215,15 @@ func (cr *CanvasRenderer) renderHeading(node *RenderNode, objects *[]fyne.Canvas
 		return
 	}
 
-	label := widget.NewLabel(text)
-	label.Wrapping = fyne.TextWrapWord
-	label.TextStyle = fyne.TextStyle{Bold: true}
+	// Apply CSS styles if present
+	styledObj := cr.applyStylesToLabel(node, text)
+	
+	// If it's a standard label (no CSS), apply heading styles
+	if label, ok := styledObj.(*widget.Label); ok {
+		label.TextStyle = fyne.TextStyle{Bold: true}
+	}
 
-	// Different sizes for different heading levels
-	// Note: Fyne doesn't support arbitrary font sizes directly,
-	// so we use TextStyle to make headings bold
-
-	*objects = append(*objects, label)
+	*objects = append(*objects, styledObj)
 }
 
 // renderParagraph renders paragraph elements
@@ -227,10 +233,9 @@ func (cr *CanvasRenderer) renderParagraph(node *RenderNode, objects *[]fyne.Canv
 		return
 	}
 
-	label := widget.NewLabel(text)
-	label.Wrapping = fyne.TextWrapWord
-
-	*objects = append(*objects, label)
+	// Apply CSS styles if present
+	styledObj := cr.applyStylesToLabel(node, text)
+	*objects = append(*objects, styledObj)
 }
 
 // renderDiv renders div elements
@@ -623,18 +628,48 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 			return
 		}
 
-		label := widget.NewLabel(cmd.Text)
-		label.Wrapping = fyne.TextWrapWord
+		// Check if the node has CSS styles that require custom rendering
+		if cr.hasCustomStyles(cmd.Node) {
+			// Create a canvas.Text object with CSS styles
+			textObj := canvas.NewText(cmd.Text, color.Black)
+			textObj.TextSize = cr.defaultSize
 
-		if cmd.Bold && cmd.Italic {
-			label.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
-		} else if cmd.Bold {
-			label.TextStyle = fyne.TextStyle{Bold: true}
-		} else if cmd.Italic {
-			label.TextStyle = fyne.TextStyle{Italic: true}
+			style := cmd.Node.ComputedStyle
+
+			if style.Color != nil {
+				textObj.Color = style.Color
+			}
+
+			if style.FontSize > 0 {
+				textObj.TextSize = style.FontSize
+			}
+
+			// Apply text style
+			textStyle := fyne.TextStyle{}
+			if style.FontWeight == "bold" || cmd.Bold {
+				textStyle.Bold = true
+			}
+			if cmd.Italic {
+				textStyle.Italic = true
+			}
+			textObj.TextStyle = textStyle
+
+			*objects = append(*objects, textObj)
+		} else {
+			// Use standard label widget
+			label := widget.NewLabel(cmd.Text)
+			label.Wrapping = fyne.TextWrapWord
+
+			if cmd.Bold && cmd.Italic {
+				label.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+			} else if cmd.Bold {
+				label.TextStyle = fyne.TextStyle{Bold: true}
+			} else if cmd.Italic {
+				label.TextStyle = fyne.TextStyle{Italic: true}
+			}
+
+			*objects = append(*objects, label)
 		}
-
-		*objects = append(*objects, label)
 
 	case PaintRect:
 		rect := canvas.NewRectangle(cmd.FillColor)
@@ -763,20 +798,29 @@ func (cr *CanvasRenderer) renderTable(node *RenderNode, objects *[]fyne.CanvasOb
 	data := [][]string{}
 	var maxCols int
 
-	for _, child := range node.Children {
-		if child.TagName == "tr" {
-			row := []string{}
-			for _, td := range child.Children {
-				if td.TagName == "td" {
-					row = append(row, cr.extractText(td))
+	// Helper function to extract rows from a node (handles tbody, thead, tfoot)
+	var extractRows func(*RenderNode)
+	extractRows = func(n *RenderNode) {
+		for _, child := range n.Children {
+			if child.TagName == "tr" {
+				row := []string{}
+				for _, td := range child.Children {
+					if td.TagName == "td" || td.TagName == "th" {
+						row = append(row, cr.extractText(td))
+					}
 				}
+				if len(row) > maxCols {
+					maxCols = len(row)
+				}
+				data = append(data, row)
+			} else if child.TagName == "tbody" || child.TagName == "thead" || child.TagName == "tfoot" {
+				// Recursively process tbody, thead, tfoot
+				extractRows(child)
 			}
-			if len(row) > maxCols {
-				maxCols = len(row)
-			}
-			data = append(data, row)
 		}
 	}
+
+	extractRows(node)
 
 	if len(data) == 0 || maxCols == 0 {
 		return
@@ -815,4 +859,52 @@ func (cr *CanvasRenderer) renderTextarea(node *RenderNode, objects *[]fyne.Canva
 		entry.SetPlaceHolder(placeholder)
 	}
 	*objects = append(*objects, entry)
+}
+
+// hasCustomStyles checks if a node has CSS styles that require custom rendering
+func (cr *CanvasRenderer) hasCustomStyles(node *RenderNode) bool {
+	return node != nil && node.ComputedStyle != nil && (
+		node.ComputedStyle.Color != nil ||
+		node.ComputedStyle.FontSize > 0 ||
+		node.ComputedStyle.FontWeight == "bold")
+}
+
+// applyStylesToLabel applies CSS styles from ComputedStyle to a label widget.
+// Since Fyne's standard Label widget doesn't support custom colors or font sizes,
+// this function creates a styled canvas.Text object when custom styles are present.
+// Note: canvas.Text objects don't support text wrapping, which is a known limitation.
+func (cr *CanvasRenderer) applyStylesToLabel(node *RenderNode, text string) fyne.CanvasObject {
+	if !cr.hasCustomStyles(node) {
+		// No custom styles, use standard label
+		label := widget.NewLabel(text)
+		label.Wrapping = fyne.TextWrapWord
+		
+		// Apply tag-based styles (bold, italic, etc.)
+		if node.Parent != nil {
+			label.TextStyle = cr.fontMetrics.GetTextStyle(node.Parent.TagName)
+		}
+		
+		return label
+	}
+
+	// Create a styled canvas.Text object
+	textObj := canvas.NewText(text, color.Black)
+	textObj.TextSize = cr.defaultSize
+	
+	// Apply computed styles
+	style := node.ComputedStyle
+	
+	if style.Color != nil {
+		textObj.Color = style.Color
+	}
+	
+	if style.FontSize > 0 {
+		textObj.TextSize = style.FontSize
+	}
+	
+	if style.FontWeight == "bold" {
+		textObj.TextStyle = fyne.TextStyle{Bold: true}
+	}
+	
+	return textObj
 }

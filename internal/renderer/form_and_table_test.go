@@ -71,6 +71,26 @@ func TestTableElementRendering(t *testing.T) {
 		t.Fatalf("html.Parse failed: %v", err)
 	}
 	renderTree := BuildRenderTree(findBodyNode(doc))
+	
+	// Debug: print render tree
+	t.Logf("Render tree structure:")
+	var printTree func(*RenderNode, int)
+	printTree = func(node *RenderNode, level int) {
+		if node == nil {
+			return
+		}
+		indent := strings.Repeat("  ", level)
+		if node.Type == NodeTypeElement {
+			t.Logf("%sElement: %s (children: %d)", indent, node.TagName, len(node.Children))
+		} else {
+			t.Logf("%sText: %s", indent, node.Text)
+		}
+		for _, child := range node.Children {
+			printTree(child, level+1)
+		}
+	}
+	printTree(renderTree, 0)
+	
 	obj := r.canvasRenderer.Render(renderTree)
 
 	topContainer, ok := obj.(*fyne.Container)
@@ -82,12 +102,16 @@ func TestTableElementRendering(t *testing.T) {
 		t.Fatalf("Expected 1 object, got %d", len(topContainer.Objects))
 	}
 
-	form, ok := topContainer.Objects[0].(*widget.Form)
+	table, ok := topContainer.Objects[0].(*widget.Table)
 	if !ok {
-		t.Fatalf("Expected a Form widget, but got something else")
+		t.Fatalf("Expected a Table widget, but got %T", topContainer.Objects[0])
 	}
 
-	if len(form.Items) != 4 {
-		t.Errorf("Expected 4 form items, but got %d", len(form.Items))
+	rows, cols := table.Length()
+	if rows != 2 {
+		t.Errorf("Expected 2 rows, but got %d", rows)
+	}
+	if cols != 2 {
+		t.Errorf("Expected 2 columns, but got %d", cols)
 	}
 }
