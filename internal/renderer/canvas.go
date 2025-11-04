@@ -176,9 +176,15 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 		cr.renderTextarea(node, objects)
 	case "table":
 		cr.renderTable(node, objects)
+	case "tbody", "thead", "tfoot":
+		// These are handled by renderTable, but if rendered independently,
+		// treat them as containers
+		for _, child := range node.Children {
+			cr.renderNode(child, objects)
+		}
 	case "tr":
 		// Handled by renderTable
-	case "td":
+	case "td", "th":
 		// Handled by renderTable
 	case "br":
 		// Add a spacer for line break
@@ -763,20 +769,29 @@ func (cr *CanvasRenderer) renderTable(node *RenderNode, objects *[]fyne.CanvasOb
 	data := [][]string{}
 	var maxCols int
 
-	for _, child := range node.Children {
-		if child.TagName == "tr" {
-			row := []string{}
-			for _, td := range child.Children {
-				if td.TagName == "td" {
-					row = append(row, cr.extractText(td))
+	// Helper function to extract rows from a node (handles tbody, thead, tfoot)
+	var extractRows func(*RenderNode)
+	extractRows = func(n *RenderNode) {
+		for _, child := range n.Children {
+			if child.TagName == "tr" {
+				row := []string{}
+				for _, td := range child.Children {
+					if td.TagName == "td" || td.TagName == "th" {
+						row = append(row, cr.extractText(td))
+					}
 				}
+				if len(row) > maxCols {
+					maxCols = len(row)
+				}
+				data = append(data, row)
+			} else if child.TagName == "tbody" || child.TagName == "thead" || child.TagName == "tfoot" {
+				// Recursively process tbody, thead, tfoot
+				extractRows(child)
 			}
-			if len(row) > maxCols {
-				maxCols = len(row)
-			}
-			data = append(data, row)
 		}
 	}
+
+	extractRows(node)
 
 	if len(data) == 0 || maxCols == 0 {
 		return
