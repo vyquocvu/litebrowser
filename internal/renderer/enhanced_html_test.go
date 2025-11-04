@@ -1,9 +1,12 @@
 package renderer
 
 import (
+	_ "image/color" // imported for type checking
 	"strings"
 	"testing"
 
+	"fyne.io/fyne/v2"
+	"fyne.io/fyne/v2/canvas"
 	"golang.org/x/net/html"
 )
 
@@ -231,5 +234,129 @@ func TestLinkClickability(t *testing.T) {
 
 	if !linkFound {
 		t.Error("Expected to find a link node")
+	}
+}
+
+// TestCSSRenderingWithColors tests that CSS colors are applied to rendered widgets
+func TestCSSRenderingWithColors(t *testing.T) {
+	htmlContent := `
+		<html>
+			<head>
+				<style>
+					.red { color: red; }
+					.blue { color: #0000ff; }
+				</style>
+			</head>
+			<body>
+				<p class="red">Red text</p>
+				<p class="blue">Blue text</p>
+			</body>
+		</html>
+	`
+	r := NewRenderer(800, 600)
+	r.SetCurrentURL("https://example.com")
+	
+	canvasObj, err := r.RenderHTML(htmlContent)
+	if err != nil {
+		t.Fatalf("RenderHTML failed: %v", err)
+	}
+
+	// The canvas object should be a container
+	container, ok := canvasObj.(*fyne.Container)
+	if !ok {
+		t.Fatalf("Expected container, got %T", canvasObj)
+	}
+
+	// We should have at least 2 objects (the two paragraphs)
+	if len(container.Objects) < 2 {
+		t.Fatalf("Expected at least 2 objects, got %d", len(container.Objects))
+	}
+
+	// Debug: print what we got
+	t.Logf("Container has %d objects:", len(container.Objects))
+	for i, obj := range container.Objects {
+		t.Logf("  Object %d: %T", i, obj)
+		if text, ok := obj.(*canvas.Text); ok {
+			t.Logf("    Text: %s, Color: %v, Size: %f", text.Text, text.Color, text.TextSize)
+		}
+	}
+
+	// Check if canvas.Text objects with colors are present
+	foundRed := false
+	foundBlue := false
+	
+	for _, obj := range container.Objects {
+		if text, ok := obj.(*canvas.Text); ok {
+			// Check for red color
+			if r, g, b, a := text.Color.RGBA(); r == 0xffff && g == 0 && b == 0 && a == 0xffff {
+				foundRed = true
+				t.Logf("Found red text: %s", text.Text)
+			}
+			// Check for blue color
+			if r, g, b, a := text.Color.RGBA(); r == 0 && g == 0 && b == 0xffff && a == 0xffff {
+				foundBlue = true
+				t.Logf("Found blue text: %s", text.Text)
+			}
+		}
+	}
+
+	if !foundRed {
+		t.Error("Expected to find red colored text")
+	}
+	if !foundBlue {
+		t.Error("Expected to find blue colored text")
+	}
+}
+
+// TestCSSRenderingWithFontSize tests that CSS font sizes are applied
+func TestCSSRenderingWithFontSize(t *testing.T) {
+	htmlContent := `
+		<html>
+			<head>
+				<style>
+					.large { font-size: 24px; }
+					.small { font-size: 10px; }
+				</style>
+			</head>
+			<body>
+				<p class="large">Large text</p>
+				<p class="small">Small text</p>
+			</body>
+		</html>
+	`
+	r := NewRenderer(800, 600)
+	r.SetCurrentURL("https://example.com")
+	
+	canvasObj, err := r.RenderHTML(htmlContent)
+	if err != nil {
+		t.Fatalf("RenderHTML failed: %v", err)
+	}
+
+	container, ok := canvasObj.(*fyne.Container)
+	if !ok {
+		t.Fatalf("Expected container, got %T", canvasObj)
+	}
+
+	foundLarge := false
+	foundSmall := false
+	
+	for _, obj := range container.Objects {
+		if text, ok := obj.(*canvas.Text); ok {
+			if text.TextSize == 24.0 {
+				foundLarge = true
+				t.Logf("Found large text: %s (size: %f)", text.Text, text.TextSize)
+			}
+			if text.TextSize == 10.0 {
+				foundSmall = true
+				t.Logf("Found small text: %s (size: %f)", text.Text, text.TextSize)
+			}
+		}
+	}
+
+	if !foundLarge {
+		t.Error("Expected to find large (24px) text")
+	}
+	if !foundSmall {
+		t.Error("Expected to find small (10px) text")
 	}
 }
