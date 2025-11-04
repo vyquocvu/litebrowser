@@ -177,15 +177,15 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 	case "table":
 		cr.renderTable(node, objects)
 	case "tbody", "thead", "tfoot":
-		// These are handled by renderTable, but if rendered independently,
-		// treat them as containers
+		// Table section elements. Usually handled by renderTable when inside a <table>,
+		// but if encountered independently (edge case), render children as block elements.
 		for _, child := range node.Children {
 			cr.renderNode(child, objects)
 		}
 	case "tr":
-		// Handled by renderTable
+		// Table row. Usually handled by renderTable, but render children if standalone.
 	case "td", "th":
-		// Handled by renderTable
+		// Table cells. Usually handled by renderTable, but render children if standalone.
 	case "br":
 		// Add a spacer for line break
 		*objects = append(*objects, widget.NewLabel(""))
@@ -628,13 +628,8 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 			return
 		}
 
-		// Check if the node has CSS styles
-		hasCustomStyles := cmd.Node != nil && cmd.Node.ComputedStyle != nil && (
-			cmd.Node.ComputedStyle.Color != nil ||
-			cmd.Node.ComputedStyle.FontSize > 0 ||
-			cmd.Node.ComputedStyle.FontWeight == "bold")
-
-		if hasCustomStyles {
+		// Check if the node has CSS styles that require custom rendering
+		if cr.hasCustomStyles(cmd.Node) {
 			// Create a canvas.Text object with CSS styles
 			textObj := canvas.NewText(cmd.Text, color.Black)
 			textObj.TextSize = cr.defaultSize
@@ -866,17 +861,20 @@ func (cr *CanvasRenderer) renderTextarea(node *RenderNode, objects *[]fyne.Canva
 	*objects = append(*objects, entry)
 }
 
-// applyStylesToLabel applies CSS styles from ComputedStyle to a label widget
-// Since Fyne's standard Label widget doesn't support custom colors or font sizes,
-// this function creates a styled canvas.Text object when custom styles are present
-func (cr *CanvasRenderer) applyStylesToLabel(node *RenderNode, text string) fyne.CanvasObject {
-	// Check if the node has custom styles
-	hasCustomStyles := node.ComputedStyle != nil && (
+// hasCustomStyles checks if a node has CSS styles that require custom rendering
+func (cr *CanvasRenderer) hasCustomStyles(node *RenderNode) bool {
+	return node != nil && node.ComputedStyle != nil && (
 		node.ComputedStyle.Color != nil ||
 		node.ComputedStyle.FontSize > 0 ||
 		node.ComputedStyle.FontWeight == "bold")
+}
 
-	if !hasCustomStyles {
+// applyStylesToLabel applies CSS styles from ComputedStyle to a label widget.
+// Since Fyne's standard Label widget doesn't support custom colors or font sizes,
+// this function creates a styled canvas.Text object when custom styles are present.
+// Note: canvas.Text objects don't support text wrapping, which is a known limitation.
+func (cr *CanvasRenderer) applyStylesToLabel(node *RenderNode, text string) fyne.CanvasObject {
+	if !cr.hasCustomStyles(node) {
 		// No custom styles, use standard label
 		label := widget.NewLabel(text)
 		label.Wrapping = fyne.TextWrapWord
@@ -908,53 +906,5 @@ func (cr *CanvasRenderer) applyStylesToLabel(node *RenderNode, text string) fyne
 		textObj.TextStyle = fyne.TextStyle{Bold: true}
 	}
 	
-	// Fyne's canvas.Text doesn't support wrapping directly,
-	// so we need to wrap it in a container with RichText for wrapping
-	// For simplicity, we'll use the text object as-is for now
 	return textObj
-}
-
-// getEffectiveFontSize returns the font size for a node, considering CSS and default sizes
-func (cr *CanvasRenderer) getEffectiveFontSize(node *RenderNode) float32 {
-	if node.ComputedStyle != nil && node.ComputedStyle.FontSize > 0 {
-		return node.ComputedStyle.FontSize
-	}
-	if node.Parent != nil {
-		return cr.fontMetrics.GetFontSize(node.Parent.TagName)
-	}
-	return cr.defaultSize
-}
-
-// getEffectiveColor returns the color for a node, considering CSS and defaults
-func (cr *CanvasRenderer) getEffectiveColor(node *RenderNode) color.Color {
-	if node.ComputedStyle != nil && node.ComputedStyle.Color != nil {
-		return node.ComputedStyle.Color
-	}
-	return color.Black
-}
-
-// getEffectiveTextStyle returns the text style for a node, considering CSS and defaults
-func (cr *CanvasRenderer) getEffectiveTextStyle(node *RenderNode) fyne.TextStyle {
-	style := fyne.TextStyle{}
-	
-	// Check CSS font-weight
-	if node.ComputedStyle != nil && node.ComputedStyle.FontWeight == "bold" {
-		style.Bold = true
-	}
-	
-	// Check parent tag for style hints
-	if node.Parent != nil {
-		parentStyle := cr.fontMetrics.GetTextStyle(node.Parent.TagName)
-		if parentStyle.Bold {
-			style.Bold = true
-		}
-		if parentStyle.Italic {
-			style.Italic = true
-		}
-		if parentStyle.Monospace {
-			style.Monospace = true
-		}
-	}
-	
-	return style
 }

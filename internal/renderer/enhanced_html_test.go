@@ -1,7 +1,6 @@
 package renderer
 
 import (
-	_ "image/color" // imported for type checking
 	"strings"
 	"testing"
 
@@ -197,9 +196,7 @@ func TestLinkClickability(t *testing.T) {
 	`
 	r := NewRenderer(800, 600)
 	
-	_ = false // clicked (not used in this test, but callback is tested)
 	r.SetNavigationCallback(func(url string) {
-		_ = true // clicked
 		if url != "https://example.com" {
 			t.Errorf("Expected URL https://example.com, got %s", url)
 		}
