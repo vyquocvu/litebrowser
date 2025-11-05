@@ -24,6 +24,14 @@ type Timer struct {
 	stopped  bool  // Track if timer has been stopped
 }
 
+// ConsoleMessage represents a console log message
+type ConsoleMessage struct {
+	Level     string        // "log", "error", "warn", "info", "table"
+	Message   string        // Formatted message
+	Timestamp time.Time     // When the message was logged
+	Data      interface{}   // Raw data for table display
+}
+
 // Runtime wraps the Goja JavaScript runtime
 type Runtime struct {
 	vm         *goja.Runtime
@@ -38,6 +46,12 @@ type Runtime struct {
 	// History tracking
 	historyStack   []string
 	historyIndex   int
+	// Console messages
+	consoleMessages []ConsoleMessage
+	consoleMu       sync.Mutex
+	// JavaScript errors
+	jsErrors        []string
+	jsErrorsMu      sync.Mutex
 }
 
 // NewRuntime creates a new JavaScript runtime with console.log and document APIs
@@ -46,28 +60,21 @@ func NewRuntime() *Runtime {
 	parser := dom.NewParser()
 	
 	runtime := &Runtime{
-		vm:             vm,
-		parser:         parser,
-		eventListeners: make(map[string][]goja.Callable),
-		localStorage:   make(map[string]string),
-		sessionStorage: make(map[string]string),
-		timers:         make(map[int]*Timer),
-		timerIDCounter: 1,
-		historyStack:   []string{},
-		historyIndex:   -1,
+		vm:              vm,
+		parser:          parser,
+		eventListeners:  make(map[string][]goja.Callable),
+		localStorage:    make(map[string]string),
+		sessionStorage:  make(map[string]string),
+		timers:          make(map[int]*Timer),
+		timerIDCounter:  1,
+		historyStack:    []string{},
+		historyIndex:    -1,
+		consoleMessages: make([]ConsoleMessage, 0),
+		jsErrors:        make([]string, 0),
 	}
 
-	// Setup console.log
-	console := vm.NewObject()
-	console.Set("log", func(call goja.FunctionCall) goja.Value {
-		args := make([]interface{}, len(call.Arguments))
-		for i, arg := range call.Arguments {
-			args[i] = arg.Export()
-		}
-		fmt.Println(args...)
-		return goja.Undefined()
-	})
-	vm.Set("console", console)
+	// Setup enhanced console API
+	runtime.setupConsoleAPI()
 
 	// Setup document object with all DOM APIs
 	runtime.setupDocumentAPI()
@@ -76,6 +83,126 @@ func NewRuntime() *Runtime {
 	runtime.setupWindowAPI()
 
 	return runtime
+}
+
+// setupConsoleAPI configures all console methods with message tracking
+func (r *Runtime) setupConsoleAPI() {
+	console := r.vm.NewObject()
+	
+	// Helper function to format arguments
+	formatArgs := func(args []goja.Value) string {
+		parts := make([]string, len(args))
+		for i, arg := range args {
+			parts[i] = fmt.Sprintf("%v", arg.Export())
+		}
+		return strings.Join(parts, " ")
+	}
+	
+	// Helper function to log a console message
+	logMessage := func(level string, args []goja.Value, data interface{}) {
+		message := formatArgs(args)
+		r.consoleMu.Lock()
+		r.consoleMessages = append(r.consoleMessages, ConsoleMessage{
+			Level:     level,
+			Message:   message,
+			Timestamp: time.Now(),
+			Data:      data,
+		})
+		r.consoleMu.Unlock()
+		
+		// Also print to stdout with level prefix
+		prefix := ""
+		switch level {
+		case "error":
+			prefix = "[ERROR] "
+		case "warn":
+			prefix = "[WARN] "
+		case "info":
+			prefix = "[INFO] "
+		case "table":
+			prefix = "[TABLE] "
+		}
+		fmt.Println(prefix + message)
+	}
+	
+	// console.log
+	console.Set("log", func(call goja.FunctionCall) goja.Value {
+		logMessage("log", call.Arguments, nil)
+		return goja.Undefined()
+	})
+	
+	// console.error
+	console.Set("error", func(call goja.FunctionCall) goja.Value {
+		logMessage("error", call.Arguments, nil)
+		return goja.Undefined()
+	})
+	
+	// console.warn
+	console.Set("warn", func(call goja.FunctionCall) goja.Value {
+		logMessage("warn", call.Arguments, nil)
+		return goja.Undefined()
+	})
+	
+	// console.info
+	console.Set("info", func(call goja.FunctionCall) goja.Value {
+		logMessage("info", call.Arguments, nil)
+		return goja.Undefined()
+	})
+	
+	// console.table - format data as a table
+	console.Set("table", func(call goja.FunctionCall) goja.Value {
+		if len(call.Arguments) == 0 {
+			return goja.Undefined()
+		}
+		
+		data := call.Arguments[0].Export()
+		
+		// Format the table data
+		var tableStr strings.Builder
+		tableStr.WriteString("\n")
+		
+		switch v := data.(type) {
+		case []interface{}:
+			// Array of values
+			tableStr.WriteString("┌─────┬─────────────────────────────────────────┐\n")
+			tableStr.WriteString("│ (i) │ Value                                   │\n")
+			tableStr.WriteString("├─────┼─────────────────────────────────────────┤\n")
+			for i, item := range v {
+				value := fmt.Sprintf("%v", item)
+				if len(value) > 40 {
+					value = value[:37] + "..."
+				}
+				tableStr.WriteString(fmt.Sprintf("│ %-3d │ %-40s│\n", i, value))
+			}
+			tableStr.WriteString("└─────┴─────────────────────────────────────────┘")
+		case map[string]interface{}:
+			// Object/map
+			tableStr.WriteString("┌─────────────────────┬──────────────────────┐\n")
+			tableStr.WriteString("│ Key                 │ Value                │\n")
+			tableStr.WriteString("├─────────────────────┼──────────────────────┤\n")
+			for key, val := range v {
+				keyStr := key
+				if len(keyStr) > 20 {
+					keyStr = keyStr[:17] + "..."
+				}
+				valStr := fmt.Sprintf("%v", val)
+				if len(valStr) > 20 {
+					valStr = valStr[:17] + "..."
+				}
+				tableStr.WriteString(fmt.Sprintf("│ %-20s│ %-20s│\n", keyStr, valStr))
+			}
+			tableStr.WriteString("└─────────────────────┴──────────────────────┘")
+		default:
+			// Single value
+			tableStr.WriteString(fmt.Sprintf("Value: %v", v))
+		}
+		
+		args := []goja.Value{r.vm.ToValue(tableStr.String())}
+		logMessage("table", args, data)
+		return goja.Undefined()
+	})
+	
+	r.vm.Set("console", console)
 }
 
 // setupDocumentAPI configures all document-related APIs
@@ -440,9 +567,65 @@ func (r *Runtime) SetHTMLContent(html string) {
 	r.htmlCache = html
 }
 
-// RunScript executes JavaScript code
+// RunScript executes JavaScript code and catches errors
 func (r *Runtime) RunScript(script string) (goja.Value, error) {
-	return r.vm.RunString(script)
+	val, err := r.vm.RunString(script)
+	if err != nil {
+		// Log JavaScript error
+		errorMsg := fmt.Sprintf("JavaScript Error: %v", err)
+		r.jsErrorsMu.Lock()
+		r.jsErrors = append(r.jsErrors, errorMsg)
+		r.jsErrorsMu.Unlock()
+		
+		// Also add to console as an error
+		r.consoleMu.Lock()
+		r.consoleMessages = append(r.consoleMessages, ConsoleMessage{
+			Level:     "error",
+			Message:   errorMsg,
+			Timestamp: time.Now(),
+			Data:      nil,
+		})
+		r.consoleMu.Unlock()
+		
+		fmt.Println("[JS ERROR]", errorMsg)
+	}
+	return val, err
+}
+
+// GetConsoleMessages returns all console messages
+func (r *Runtime) GetConsoleMessages() []ConsoleMessage {
+	r.consoleMu.Lock()
+	defer r.consoleMu.Unlock()
+	
+	// Return a copy to prevent concurrent modification
+	messages := make([]ConsoleMessage, len(r.consoleMessages))
+	copy(messages, r.consoleMessages)
+	return messages
+}
+
+// ClearConsoleMessages clears all console messages
+func (r *Runtime) ClearConsoleMessages() {
+	r.consoleMu.Lock()
+	defer r.consoleMu.Unlock()
+	r.consoleMessages = make([]ConsoleMessage, 0)
+}
+
+// GetJavaScriptErrors returns all JavaScript errors
+func (r *Runtime) GetJavaScriptErrors() []string {
+	r.jsErrorsMu.Lock()
+	defer r.jsErrorsMu.Unlock()
+	
+	// Return a copy
+	errors := make([]string, len(r.jsErrors))
+	copy(errors, r.jsErrors)
+	return errors
+}
+
+// ClearJavaScriptErrors clears all JavaScript errors
+func (r *Runtime) ClearJavaScriptErrors() {
+	r.jsErrorsMu.Lock()
+	defer r.jsErrorsMu.Unlock()
+	r.jsErrors = make([]string, 0)
 }
 
 // setupWindowAPI configures window object with browser APIs
