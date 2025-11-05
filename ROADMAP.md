@@ -77,7 +77,7 @@ This document outlines the planned features and improvements for the Goosie proj
 ## Phase 3: Advanced Features (v0.7.0)
 
 ### CSS Support
-- [ ] Full CSS parser
+- [x] Full CSS parser
 - [ ] Box model implementation
 - [ ] Flexbox layout
 - [ ] Grid layout
