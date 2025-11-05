@@ -885,3 +885,191 @@ if err != nil {
 t.Errorf("clearInterval multiple times failed: %v", err)
 }
 }
+
+func TestConsoleError(t *testing.T) {
+	runtime := NewRuntime()
+	
+	_, err := runtime.RunScript(`console.error("test error");`)
+	if err != nil {
+		t.Errorf("console.error failed: %v", err)
+	}
+	
+	messages := runtime.GetConsoleMessages()
+	if len(messages) == 0 {
+		t.Errorf("Expected console message to be logged")
+	}
+	
+	if messages[0].Level != "error" {
+		t.Errorf("Expected level to be 'error', got %s", messages[0].Level)
+	}
+	
+	if messages[0].Message != "test error" {
+		t.Errorf("Expected message 'test error', got %s", messages[0].Message)
+	}
+}
+
+func TestConsoleWarn(t *testing.T) {
+	runtime := NewRuntime()
+	
+	_, err := runtime.RunScript(`console.warn("test warning");`)
+	if err != nil {
+		t.Errorf("console.warn failed: %v", err)
+	}
+	
+	messages := runtime.GetConsoleMessages()
+	if len(messages) == 0 {
+		t.Errorf("Expected console message to be logged")
+	}
+	
+	if messages[0].Level != "warn" {
+		t.Errorf("Expected level to be 'warn', got %s", messages[0].Level)
+	}
+}
+
+func TestConsoleInfo(t *testing.T) {
+	runtime := NewRuntime()
+	
+	_, err := runtime.RunScript(`console.info("test info");`)
+	if err != nil {
+		t.Errorf("console.info failed: %v", err)
+	}
+	
+	messages := runtime.GetConsoleMessages()
+	if len(messages) == 0 {
+		t.Errorf("Expected console message to be logged")
+	}
+	
+	if messages[0].Level != "info" {
+		t.Errorf("Expected level to be 'info', got %s", messages[0].Level)
+	}
+}
+
+func TestConsoleTable(t *testing.T) {
+	runtime := NewRuntime()
+	
+	// Test with an array
+	_, err := runtime.RunScript(`console.table([1, 2, 3, 4, 5]);`)
+	if err != nil {
+		t.Errorf("console.table with array failed: %v", err)
+	}
+	
+	messages := runtime.GetConsoleMessages()
+	if len(messages) == 0 {
+		t.Errorf("Expected console message to be logged")
+	}
+	
+	if messages[0].Level != "table" {
+		t.Errorf("Expected level to be 'table', got %s", messages[0].Level)
+	}
+	
+	// Test with an object
+	runtime.ClearConsoleMessages()
+	_, err = runtime.RunScript(`console.table({name: "John", age: 30, city: "New York"});`)
+	if err != nil {
+		t.Errorf("console.table with object failed: %v", err)
+	}
+	
+	messages = runtime.GetConsoleMessages()
+	if len(messages) == 0 {
+		t.Errorf("Expected console message to be logged")
+	}
+	
+	if messages[0].Level != "table" {
+		t.Errorf("Expected level to be 'table', got %s", messages[0].Level)
+	}
+}
+
+func TestGetConsoleMessages(t *testing.T) {
+	runtime := NewRuntime()
+	
+	// Log multiple messages
+	runtime.RunScript(`console.log("message 1");`)
+	runtime.RunScript(`console.error("message 2");`)
+	runtime.RunScript(`console.warn("message 3");`)
+	
+	messages := runtime.GetConsoleMessages()
+	
+	if len(messages) != 3 {
+		t.Errorf("Expected 3 console messages, got %d", len(messages))
+	}
+	
+	if messages[0].Level != "log" || messages[0].Message != "message 1" {
+		t.Errorf("First message incorrect: %v", messages[0])
+	}
+	
+	if messages[1].Level != "error" || messages[1].Message != "message 2" {
+		t.Errorf("Second message incorrect: %v", messages[1])
+	}
+	
+	if messages[2].Level != "warn" || messages[2].Message != "message 3" {
+		t.Errorf("Third message incorrect: %v", messages[2])
+	}
+}
+
+func TestClearConsoleMessages(t *testing.T) {
+	runtime := NewRuntime()
+	
+	runtime.RunScript(`console.log("message 1");`)
+	runtime.RunScript(`console.log("message 2");`)
+	
+	messages := runtime.GetConsoleMessages()
+	if len(messages) != 2 {
+		t.Errorf("Expected 2 messages before clear, got %d", len(messages))
+	}
+	
+	runtime.ClearConsoleMessages()
+	
+	messages = runtime.GetConsoleMessages()
+	if len(messages) != 0 {
+		t.Errorf("Expected 0 messages after clear, got %d", len(messages))
+	}
+}
+
+func TestJavaScriptErrorTracking(t *testing.T) {
+	runtime := NewRuntime()
+	
+	// Execute invalid JavaScript
+	_, err := runtime.RunScript(`var x = ;`)
+	if err == nil {
+		t.Errorf("Expected error for invalid JavaScript")
+	}
+	
+	errors := runtime.GetJavaScriptErrors()
+	if len(errors) == 0 {
+		t.Errorf("Expected JavaScript error to be tracked")
+	}
+	
+	// Check that error was also logged to console
+	messages := runtime.GetConsoleMessages()
+	foundError := false
+	for _, msg := range messages {
+		if msg.Level == "error" && strings.Contains(msg.Message, "JavaScript Error") {
+			foundError = true
+			break
+		}
+	}
+	
+	if !foundError {
+		t.Errorf("Expected JavaScript error to be logged to console")
+	}
+}
+
+func TestClearJavaScriptErrors(t *testing.T) {
+	runtime := NewRuntime()
+	
+	// Generate an error
+	runtime.RunScript(`var x = ;`)
+	
+	errors := runtime.GetJavaScriptErrors()
+	if len(errors) == 0 {
+		t.Errorf("Expected error to be tracked")
+	}
+	
+	runtime.ClearJavaScriptErrors()
+	
+	errors = runtime.GetJavaScriptErrors()
+	if len(errors) != 0 {
+		t.Errorf("Expected 0 errors after clear, got %d", len(errors))
+	}
+}
+
