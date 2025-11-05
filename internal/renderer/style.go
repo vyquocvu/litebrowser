@@ -44,8 +44,8 @@ func (sm *StyleManager) ApplyStyles(node *RenderNode) {
 
 func (sm *StyleManager) applyMatchingRules(node *RenderNode) {
 	for _, rule := range sm.stylesheet.Rules {
-		for _, selector := range rule.Selectors {
-			if sm.matches(selector, node) {
+		for _, selectorSeq := range rule.Selectors {
+			if sm.matchesSequence(selectorSeq, node) {
 				for _, decl := range rule.Declarations {
 					sm.applyDeclaration(node, decl)
 				}
@@ -54,16 +54,137 @@ func (sm *StyleManager) applyMatchingRules(node *RenderNode) {
 	}
 }
 
-func (sm *StyleManager) matches(selector css.Selector, node *RenderNode) bool {
+// matchesSequence checks if a selector sequence matches a node
+// Note: Selectors are stored left-to-right (e.g., "div > p" stored as div->p)
+// but we match right-to-left for efficiency (first check if node matches p, then check parent matches div)
+func (sm *StyleManager) matchesSequence(seq css.SelectorSequence, node *RenderNode) bool {
+	return sm.matchesFromRight(&seq, node)
+}
+
+// matchesFromRight recursively matches selectors from right to left
+func (sm *StyleManager) matchesFromRight(seq *css.SelectorSequence, node *RenderNode) bool {
+	// Find the rightmost selector in the chain
+	if seq.Next == nil {
+		// This is the rightmost selector, match it against the node
+		return sm.matchesSimple(seq.Simple, node)
+	}
+	
+	// This is not the rightmost, so we need to match the rightmost first
+	// and then check if this one matches the appropriate ancestor/sibling
+	return sm.matchesWithCombinatorLeftToRight(seq, node)
+}
+
+// matchesWithCombinatorLeftToRight handles combinator matching for left-to-right sequences
+func (sm *StyleManager) matchesWithCombinatorLeftToRight(seq *css.SelectorSequence, node *RenderNode) bool {
+	// seq = A (combinator) B
+	// We need to check if B matches the node, then verify A matches the related element
+	
+	// First, recursively match the right side
+	if !sm.matchesFromRight(seq.Next, node) {
+		return false
+	}
+	
+	// Now check if the left side (seq.Simple) matches according to the combinator
+	switch seq.Combinator {
+	case " ": // Descendant combinator: A B means B is descendant of A
+		return sm.hasMatchingAncestor(seq.Simple, node)
+	case ">": // Child combinator: A > B means B is direct child of A
+		if node.Parent != nil {
+			return sm.matchesSimple(seq.Simple, node.Parent)
+		}
+		return false
+	case "+": // Adjacent sibling: A + B means B immediately follows A
+		sibling := sm.getPreviousSibling(node)
+		if sibling != nil {
+			return sm.matchesSimple(seq.Simple, sibling)
+		}
+		return false
+	case "~": // General sibling: A ~ B means B is preceded by A
+		return sm.hasMatchingPreviousSibling(seq.Simple, node)
+	}
+	
+	return false
+}
+
+// hasMatchingAncestor checks if any ancestor matches the selector
+func (sm *StyleManager) hasMatchingAncestor(selector css.SimpleSelector, node *RenderNode) bool {
+	current := node.Parent
+	for current != nil {
+		if sm.matchesSimple(selector, current) {
+			return true
+		}
+		current = current.Parent
+	}
+	return false
+}
+
+// hasMatchingPreviousSibling checks if any previous sibling matches the selector
+func (sm *StyleManager) hasMatchingPreviousSibling(selector css.SimpleSelector, node *RenderNode) bool {
+	if node.Parent == nil {
+		return false
+	}
+	
+	// Find node's index in parent's children
+	nodeIndex := -1
+	for i, child := range node.Parent.Children {
+		if child == node {
+			nodeIndex = i
+			break
+		}
+	}
+	
+	if nodeIndex == -1 {
+		return false
+	}
+	
+	// Check all previous siblings
+	for i := nodeIndex - 1; i >= 0; i-- {
+		if sm.matchesSimple(selector, node.Parent.Children[i]) {
+			return true
+		}
+	}
+	
+	return false
+}
+
+// getPreviousSibling returns the previous sibling of a node
+func (sm *StyleManager) getPreviousSibling(node *RenderNode) *RenderNode {
+	if node.Parent == nil {
+		return nil
+	}
+	
+	for i, child := range node.Parent.Children {
+		if child == node && i > 0 {
+			return node.Parent.Children[i-1]
+		}
+	}
+	
+	return nil
+}
+
+// matchesSimple checks if a simple selector matches a node
+func (sm *StyleManager) matchesSimple(selector css.SimpleSelector, node *RenderNode) bool {
+	// Universal selector matches everything only when it has no other constraints
+	if selector.Universal && selector.TagName == "" && selector.ID == "" && 
+		len(selector.Classes) == 0 && len(selector.PseudoClasses) == 0 && 
+		len(selector.Attributes) == 0 && len(selector.PseudoElements) == 0 {
+		return true
+	}
+	
+	// Check tag name
 	if selector.TagName != "" && selector.TagName != node.TagName {
 		return false
 	}
+	
+	// Check ID
 	if selector.ID != "" {
 		id, ok := node.GetAttribute("id")
 		if !ok || id != selector.ID {
 			return false
 		}
 	}
+	
+	// Check classes
 	if len(selector.Classes) > 0 {
 		classAttr, ok := node.GetAttribute("class")
 		if !ok {
@@ -83,17 +204,97 @@ func (sm *StyleManager) matches(selector css.Selector, node *RenderNode) bool {
 			}
 		}
 	}
-	if selector.PseudoClass != "" {
-		switch selector.PseudoClass {
-		case "link", "visited":
-			if node.TagName != "a" {
-				return false
-			}
-		default:
-			return false // Unsupported pseudo-class
+	
+	// Check pseudo-classes
+	for _, pseudoClass := range selector.PseudoClasses {
+		if !sm.matchesPseudoClass(pseudoClass, node) {
+			return false
 		}
 	}
+	
+	// Check attributes
+	for _, attr := range selector.Attributes {
+		if !sm.matchesAttribute(attr, node) {
+			return false
+		}
+	}
+	
 	return true
+}
+
+// matchesPseudoClass checks if a pseudo-class matches a node
+func (sm *StyleManager) matchesPseudoClass(pseudoClass string, node *RenderNode) bool {
+	// Handle functional pseudo-classes
+	if strings.HasPrefix(pseudoClass, "nth-child(") {
+		// For now, just return true for basic support
+		return true
+	}
+	
+	switch pseudoClass {
+	case "link", "visited":
+		return node.TagName == "a"
+	case "hover", "focus", "active":
+		// These require state tracking, not implemented yet
+		return false
+	case "first-child":
+		if node.Parent == nil || len(node.Parent.Children) == 0 {
+			return false
+		}
+		return node.Parent.Children[0] == node
+	case "last-child":
+		if node.Parent == nil || len(node.Parent.Children) == 0 {
+			return false
+		}
+		return node.Parent.Children[len(node.Parent.Children)-1] == node
+	default:
+		return false
+	}
+}
+
+// matchesAttribute checks if an attribute selector matches a node
+func (sm *StyleManager) matchesAttribute(attr css.AttributeSelector, node *RenderNode) bool {
+	value, ok := node.GetAttribute(attr.Name)
+	if !ok {
+		return false
+	}
+	
+	if attr.Operator == "" {
+		// Just checking for attribute presence
+		return true
+	}
+	
+	switch attr.Operator {
+	case "=":
+		return value == attr.Value
+	case "~=":
+		// Word match
+		words := strings.Fields(value)
+		for _, word := range words {
+			if word == attr.Value {
+				return true
+			}
+		}
+		return false
+	case "|=":
+		// Exact or prefix with hyphen
+		return value == attr.Value || strings.HasPrefix(value, attr.Value+"-")
+	case "^=":
+		// Starts with
+		return strings.HasPrefix(value, attr.Value)
+	case "$=":
+		// Ends with
+		return strings.HasSuffix(value, attr.Value)
+	case "*=":
+		// Contains
+		return strings.Contains(value, attr.Value)
+	}
+	
+	return false
+}
+
+// Legacy function for backward compatibility with old Selector type
+func (sm *StyleManager) matches(selector css.SimpleSelector, node *RenderNode) bool {
+	return sm.matchesSimple(selector, node)
 }
 
 // colorNameToHex maps common color names to their hex values.
