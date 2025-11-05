@@ -1,6 +1,7 @@
 package css
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -23,7 +24,7 @@ func TestParser(t *testing.T) {
 	if len(rule.Selectors) != 1 {
 		t.Fatalf("expected 1 selector, got %d", len(rule.Selectors))
 	}
-	selector := rule.Selectors[0]
+	selector := rule.Selectors[0].Simple
 	if selector.TagName != "h1" {
 		t.Errorf("expected tag name 'h1', got '%s'", selector.TagName)
 	}
@@ -58,7 +59,7 @@ func TestParserCombinedSelector(t *testing.T) {
 	if len(rule.Selectors) != 1 {
 		t.Fatalf("expected 1 selector, got %d", len(rule.Selectors))
 	}
-	selector := rule.Selectors[0]
+	selector := rule.Selectors[0].Simple
 	if selector.TagName != "h1" {
 		t.Errorf("expected tag name 'h1', got '%s'", selector.TagName)
 	}
@@ -71,5 +72,452 @@ func TestParserCombinedSelector(t *testing.T) {
 	decl := rule.Declarations[0]
 	if decl.Property != "color" || decl.Value != "blue" {
 		t.Errorf("unexpected declaration: %s: %s", decl.Property, decl.Value)
+	}
+}
+
+func TestParserComments(t *testing.T) {
+	css := `
+		/* This is a comment */
+		h1 {
+			color: red; /* inline comment */
+		}
+		/* Another comment */
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+}
+
+func TestParserDescendantSelector(t *testing.T) {
+	css := `
+		div p {
+			color: blue;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	if len(rule.Selectors) != 1 {
+		t.Fatalf("expected 1 selector, got %d", len(rule.Selectors))
+	}
+	seq := rule.Selectors[0]
+	// Selector is stored left-to-right: div (combinator: " ") -> p
+	if seq.Simple.TagName != "div" {
+		t.Errorf("expected leftmost selector to be 'div', got '%s'", seq.Simple.TagName)
+	}
+	if seq.Combinator != " " {
+		t.Errorf("expected descendant combinator, got '%s'", seq.Combinator)
+	}
+	if seq.Next == nil || seq.Next.Simple.TagName != "p" {
+		t.Errorf("expected rightmost selector to be 'p'")
+	}
+}
+
+func TestParserChildSelector(t *testing.T) {
+	css := `
+		div > p {
+			margin: 10px;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	seq := rule.Selectors[0]
+	if seq.Combinator != ">" {
+		t.Errorf("expected child combinator, got '%s'", seq.Combinator)
+	}
+}
+
+func TestParserAdjacentSiblingSelector(t *testing.T) {
+	css := `
+		h1 + p {
+			font-weight: bold;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	seq := rule.Selectors[0]
+	if seq.Combinator != "+" {
+		t.Errorf("expected adjacent sibling combinator, got '%s'", seq.Combinator)
+	}
+}
+
+func TestParserGeneralSiblingSelector(t *testing.T) {
+	css := `
+		h1 ~ p {
+			color: gray;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	seq := rule.Selectors[0]
+	if seq.Combinator != "~" {
+		t.Errorf("expected general sibling combinator, got '%s'", seq.Combinator)
+	}
+}
+
+func TestParserAttributeSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		css      string
+		attrName string
+		operator string
+		value    string
+	}{
+		{
+			name:     "attribute exists",
+			css:      `[disabled] { opacity: 0.5; }`,
+			attrName: "disabled",
+			operator: "",
+			value:    "",
+		},
+		{
+			name:     "attribute equals",
+			css:      `[type="text"] { border: 1px solid; }`,
+			attrName: "type",
+			operator: "=",
+			value:    "text",
+		},
+		{
+			name:     "attribute contains word",
+			css:      `[class~="active"] { color: red; }`,
+			attrName: "class",
+			operator: "~=",
+			value:    "active",
+		},
+		{
+			name:     "attribute starts with",
+			css:      `[href^="https"] { color: green; }`,
+			attrName: "href",
+			operator: "^=",
+			value:    "https",
+		},
+		{
+			name:     "attribute ends with",
+			css:      `[src$=".png"] { display: block; }`,
+			attrName: "src",
+			operator: "$=",
+			value:    ".png",
+		},
+		{
+			name:     "attribute contains",
+			css:      `[title*="example"] { font-weight: bold; }`,
+			attrName: "title",
+			operator: "*=",
+			value:    "example",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser(tt.css)
+			stylesheet, err := p.Parse()
+			if err != nil {
+				t.Fatalf("Parse() failed: %v", err)
+			}
+			if len(stylesheet.Rules) != 1 {
+				t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+			}
+			rule := stylesheet.Rules[0]
+			selector := rule.Selectors[0].Simple
+			if len(selector.Attributes) != 1 {
+				t.Fatalf("expected 1 attribute selector, got %d", len(selector.Attributes))
+			}
+			attr := selector.Attributes[0]
+			if attr.Name != tt.attrName {
+				t.Errorf("expected attribute name '%s', got '%s'", tt.attrName, attr.Name)
+			}
+			if attr.Operator != tt.operator {
+				t.Errorf("expected operator '%s', got '%s'", tt.operator, attr.Operator)
+			}
+			if attr.Value != tt.value {
+				t.Errorf("expected value '%s', got '%s'", tt.value, attr.Value)
+			}
+		})
+	}
+}
+
+func TestParserUniversalSelector(t *testing.T) {
+	css := `
+		* {
+			margin: 0;
+			padding: 0;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	selector := rule.Selectors[0].Simple
+	if !selector.Universal {
+		t.Errorf("expected universal selector")
+	}
+}
+
+func TestParserPseudoClasses(t *testing.T) {
+	tests := []struct {
+		name        string
+		css         string
+		pseudoClass string
+	}{
+		{
+			name:        "hover",
+			css:         `a:hover { color: red; }`,
+			pseudoClass: "hover",
+		},
+		{
+			name:        "first-child",
+			css:         `li:first-child { font-weight: bold; }`,
+			pseudoClass: "first-child",
+		},
+		{
+			name:        "nth-child",
+			css:         `tr:nth-child(2) { background: gray; }`,
+			pseudoClass: "nth-child(2)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser(tt.css)
+			stylesheet, err := p.Parse()
+			if err != nil {
+				t.Fatalf("Parse() failed: %v", err)
+			}
+			if len(stylesheet.Rules) != 1 {
+				t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+			}
+			rule := stylesheet.Rules[0]
+			selector := rule.Selectors[0].Simple
+			if len(selector.PseudoClasses) != 1 {
+				t.Fatalf("expected 1 pseudo-class, got %d", len(selector.PseudoClasses))
+			}
+			if selector.PseudoClasses[0] != tt.pseudoClass {
+				t.Errorf("expected pseudo-class '%s', got '%s'", tt.pseudoClass, selector.PseudoClasses[0])
+			}
+		})
+	}
+}
+
+func TestParserPseudoElements(t *testing.T) {
+	css := `
+		p::before {
+			content: ">";
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	selector := rule.Selectors[0].Simple
+	if len(selector.PseudoElements) != 1 {
+		t.Fatalf("expected 1 pseudo-element, got %d", len(selector.PseudoElements))
+	}
+	if selector.PseudoElements[0] != "before" {
+		t.Errorf("expected pseudo-element 'before', got '%s'", selector.PseudoElements[0])
+	}
+}
+
+func TestParserMultipleSelectors(t *testing.T) {
+	css := `
+		h1, h2, h3 {
+			font-family: Arial;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	if len(rule.Selectors) != 3 {
+		t.Fatalf("expected 3 selectors, got %d", len(rule.Selectors))
+	}
+	tags := []string{"h1", "h2", "h3"}
+	for i, tag := range tags {
+		if rule.Selectors[i].Simple.TagName != tag {
+			t.Errorf("expected selector %d to be '%s', got '%s'", i, tag, rule.Selectors[i].Simple.TagName)
+		}
+	}
+}
+
+func TestParserImportant(t *testing.T) {
+	css := `
+		p {
+			color: red !important;
+			font-size: 16px;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	if len(rule.Declarations) != 2 {
+		t.Fatalf("expected 2 declarations, got %d", len(rule.Declarations))
+	}
+	if !rule.Declarations[0].Important {
+		t.Errorf("expected first declaration to be important")
+	}
+	if rule.Declarations[0].Value != "red" {
+		t.Errorf("expected value 'red', got '%s'", rule.Declarations[0].Value)
+	}
+	if rule.Declarations[1].Important {
+		t.Errorf("expected second declaration to not be important")
+	}
+}
+
+func TestParserAtMedia(t *testing.T) {
+	css := `
+		@media screen and (max-width: 600px) {
+			body {
+				font-size: 14px;
+			}
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.AtRules) != 1 {
+		t.Fatalf("expected 1 at-rule, got %d", len(stylesheet.AtRules))
+	}
+	atRule := stylesheet.AtRules[0]
+	if atRule.Name != "media" {
+		t.Errorf("expected at-rule name 'media', got '%s'", atRule.Name)
+	}
+	if !strings.Contains(atRule.Prelude, "screen") {
+		t.Errorf("expected prelude to contain 'screen', got '%s'", atRule.Prelude)
+	}
+	if len(atRule.Rules) != 1 {
+		t.Fatalf("expected 1 nested rule, got %d", len(atRule.Rules))
+	}
+}
+
+func TestParserComplexSelector(t *testing.T) {
+	css := `
+		div.container > p#intro.highlight:first-child {
+			color: blue;
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	seq := rule.Selectors[0]
+	
+	// Check leftmost selector (div.container)
+	if seq.Simple.TagName != "div" {
+		t.Errorf("expected tag 'div', got '%s'", seq.Simple.TagName)
+	}
+	if len(seq.Simple.Classes) != 1 || seq.Simple.Classes[0] != "container" {
+		t.Errorf("expected class 'container', got %v", seq.Simple.Classes)
+	}
+	
+	// Check combinator
+	if seq.Combinator != ">" {
+		t.Errorf("expected child combinator, got '%s'", seq.Combinator)
+	}
+	
+	// Check rightmost selector (p#intro.highlight:first-child)
+	if seq.Next == nil {
+		t.Fatal("expected next selector")
+	}
+	if seq.Next.Simple.TagName != "p" {
+		t.Errorf("expected next tag 'p', got '%s'", seq.Next.Simple.TagName)
+	}
+	if seq.Next.Simple.ID != "intro" {
+		t.Errorf("expected ID 'intro', got '%s'", seq.Next.Simple.ID)
+	}
+	if len(seq.Next.Simple.Classes) != 1 || seq.Next.Simple.Classes[0] != "highlight" {
+		t.Errorf("expected class 'highlight', got %v", seq.Next.Simple.Classes)
+	}
+	if len(seq.Next.Simple.PseudoClasses) != 1 || seq.Next.Simple.PseudoClasses[0] != "first-child" {
+		t.Errorf("expected pseudo-class 'first-child', got %v", seq.Next.Simple.PseudoClasses)
+	}
+}
+
+func TestParserValueWithFunction(t *testing.T) {
+	css := `
+		div {
+			background: url("image.png");
+			width: calc(100% - 20px);
+		}
+	`
+	p := NewParser(css)
+	stylesheet, err := p.Parse()
+	if err != nil {
+		t.Fatalf("Parse() failed: %v", err)
+	}
+	if len(stylesheet.Rules) != 1 {
+		t.Fatalf("expected 1 rule, got %d", len(stylesheet.Rules))
+	}
+	rule := stylesheet.Rules[0]
+	if len(rule.Declarations) != 2 {
+		t.Fatalf("expected 2 declarations, got %d", len(rule.Declarations))
+	}
+	
+	// Check url() function
+	if !strings.Contains(rule.Declarations[0].Value, "url(") {
+		t.Errorf("expected value to contain 'url(', got '%s'", rule.Declarations[0].Value)
+	}
+	
+	// Check calc() function
+	if !strings.Contains(rule.Declarations[1].Value, "calc(") {
+		t.Errorf("expected value to contain 'calc(', got '%s'", rule.Declarations[1].Value)
 	}
 }
