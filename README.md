@@ -24,12 +24,15 @@ A minimal web browser implemented in Go using Goja (JavaScript engine), Fyne (GU
   - Cancellable requests (navigate away anytime)
   - Context-based timeout and cancellation support
 - **JavaScript Runtime**: Execute JavaScript with Goja engine and comprehensive DOM APIs
-  - Console API: `console.log()`
+  - Enhanced Console API: `console.log()`, `console.error()`, `console.warn()`, `console.info()`, `console.table()`
+  - Console panel in browser UI with filtering and error tracking
   - Query methods: `getElementById()`, `getElementsByClassName()`, `getElementsByTagName()`, `querySelector()`, `querySelectorAll()`
   - Element creation: `createElement()`
   - DOM manipulation: `appendChild()`, `removeChild()`, `replaceChild()`, `insertBefore()`
   - Event handling: `addEventListener()`, `removeEventListener()`
+  - JavaScript error reporting and tracking
   - See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) for complete API reference and examples
+  - See [CONSOLE_DOCUMENTATION.md](CONSOLE_DOCUMENTATION.md) for enhanced console features
 - **Browser APIs**: Full browser environment with essential web APIs
   - window.location: URL manipulation and query parameters
   - window.history: Session history and navigation
@@ -173,6 +176,16 @@ The browser demonstrates web functionality by:
 6. **Bookmarks**: Save and manage favorite pages with visual indicators
 7. **JavaScript**: Runs JavaScript with Goja, supporting comprehensive DOM and Browser APIs:
    ```javascript
+   // Enhanced Console - Multiple log levels and structured data
+   console.log("Application started");
+   console.info("Version: 1.0.0");
+   console.warn("Using default configuration");
+   console.error("Failed to load resource");
+   
+   // Console table for structured data
+   var users = {name: "John", age: 30, role: "Developer"};
+   console.table(users);
+   
    // DOM APIs - Query and manipulate elements
    var elem = document.getElementById("main-content");
    var items = document.querySelectorAll(".list-item");
@@ -205,7 +218,15 @@ The browser demonstrates web functionality by:
    var theme = localStorage.getItem("theme");
    ```
    
-   See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md) and [BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md) for complete API references.
+   See [DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md), [BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md), and [CONSOLE_DOCUMENTATION.md](CONSOLE_DOCUMENTATION.md) for complete API references.
+
+8. **Developer Console**: Built-in console panel for debugging JavaScript
+   - Click the console button (⊞) in the toolbar to show/hide the panel
+   - View all console messages with timestamps and severity levels
+   - Filter messages by level (log, error, warn, info, table)
+   - Track JavaScript errors with error counter
+   - Clear console messages with one click
+   - See [CONSOLE_DOCUMENTATION.md](CONSOLE_DOCUMENTATION.md) for details
 
 ## Development
 
@@ -214,16 +235,18 @@ The browser demonstrates web functionality by:
 - **internal/net**: Async HTTP client with context support for fetching web pages
 - **internal/dom**: HTML parser for extracting content
 - **internal/renderer**: Canvas-based HTML renderer with layout engine
-- **internal/js**: JavaScript runtime wrapper around Goja
-- **internal/ui**: Fyne-based GUI components with loading indicator
+- **internal/js**: JavaScript runtime wrapper around Goja with enhanced console
+- **internal/ui**: Fyne-based GUI components with loading indicator and console panel
 - **cmd/browser**: Main browser application with async page loading
 - **cmd/renderer-demo**: Renderer demonstration without GUI
 - **cmd/test**: Testing utility without GUI dependencies
+- **examples**: Demo files including console_demo.go and console_demo.html
 
 ### Key Documentation
 
 - **[DOM_API_DOCUMENTATION.md](DOM_API_DOCUMENTATION.md)**: Comprehensive DOM API reference and examples
 - **[BROWSER_API_DOCUMENTATION.md](BROWSER_API_DOCUMENTATION.md)**: Browser APIs (location, history, timers, fetch, storage)
+- **[CONSOLE_DOCUMENTATION.md](CONSOLE_DOCUMENTATION.md)**: Enhanced console features and debugging tools
 - **[ASYNC_ARCHITECTURE.md](ASYNC_ARCHITECTURE.md)**: Async fetch/render architecture
 - **[PERFORMANCE.md](PERFORMANCE.md)**: Viewport culling and display list caching
 - **[RENDER_ARCHITECTURE.md](RENDER_ARCHITECTURE.md)**: Multi-tree rendering system

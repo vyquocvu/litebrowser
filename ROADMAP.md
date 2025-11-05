@@ -69,10 +69,10 @@ This document outlines the planned features and improvements for the Goosie proj
 ## Phase 2: Enhanced JavaScript Support (v0.6.0)
 
 ### Enhanced Console
-- [ ] `console.error()`, `console.warn()`, `console.info()`
-- [ ] `console.table()` for structured data
-- [ ] Console panel in the browser UI
-- [ ] JavaScript error reporting in UI
+- [x] `console.error()`, `console.warn()`, `console.info()`
+- [x] `console.table()` for structured data
+- [x] Console panel in the browser UI
+- [x] JavaScript error reporting in UI
 
 ## Phase 3: Advanced Features (v0.7.0)
 
