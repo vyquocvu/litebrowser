@@ -55,9 +55,9 @@ func (sm *StyleManager) applyMatchingRules(node *RenderNode) {
 }
 
 // matchesSequence checks if a selector sequence matches a node
+// Note: Selectors are stored left-to-right (e.g., "div > p" stored as div->p)
+// but we match right-to-left for efficiency (first check if node matches p, then check parent matches div)
 func (sm *StyleManager) matchesSequence(seq css.SelectorSequence, node *RenderNode) bool {
-	// For left-to-right parsing: div > p
-	// We need to match from right to left: check if node matches 'p', then check if parent matches 'div'
 	return sm.matchesFromRight(&seq, node)
 }
 
@@ -164,9 +164,10 @@ func (sm *StyleManager) getPreviousSibling(node *RenderNode) *RenderNode {
 
 // matchesSimple checks if a simple selector matches a node
 func (sm *StyleManager) matchesSimple(selector css.SimpleSelector, node *RenderNode) bool {
-	// Universal selector matches everything
-	if selector.Universal && selector.ID == "" && len(selector.Classes) == 0 && 
-		len(selector.PseudoClasses) == 0 && len(selector.Attributes) == 0 {
+	// Universal selector matches everything only when it has no other constraints
+	if selector.Universal && selector.TagName == "" && selector.ID == "" && 
+		len(selector.Classes) == 0 && len(selector.PseudoClasses) == 0 && 
+		len(selector.Attributes) == 0 && len(selector.PseudoElements) == 0 {
 		return true
 	}
 	

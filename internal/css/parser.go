@@ -85,17 +85,17 @@ func (p *Parser) parseAtRule() (AtRule, error) {
 			for p.peek() != '}' && p.pos < len(p.input) {
 				selectors, err := p.parseSelectorSequences()
 				if err != nil {
-					break
+					return atRule, fmt.Errorf("error parsing nested rule selectors: %w", err)
 				}
 				p.consumeWhitespaceAndComments()
 				if !p.consumeChar('{') {
-					break
+					return atRule, fmt.Errorf("expected '{' in nested rule")
 				}
 				p.consumeWhitespaceAndComments()
 				declarations := p.parseDeclarations()
 				p.consumeWhitespaceAndComments()
 				if !p.consumeChar('}') {
-					break
+					return atRule, fmt.Errorf("expected '}' in nested rule")
 				}
 				atRule.Rules = append(atRule.Rules, Rule{Selectors: selectors, Declarations: declarations})
 				p.consumeWhitespaceAndComments()
@@ -332,12 +332,27 @@ func (p *Parser) parseDeclarations() []Declaration {
 		
 		property := p.consumeIdentifier()
 		if property == "" {
-			break
+			// Skip malformed declaration
+			// Consume until we find ; or }
+			for p.pos < len(p.input) && p.peek() != ';' && p.peek() != '}' {
+				p.pos++
+			}
+			if p.peek() == ';' {
+				p.consumeChar(';')
+			}
+			continue
 		}
 		
 		p.consumeWhitespaceAndComments()
 		if !p.consumeChar(':') {
-			break
+			// Skip malformed declaration
+			for p.pos < len(p.input) && p.peek() != ';' && p.peek() != '}' {
+				p.pos++
+			}
+			if p.peek() == ';' {
+				p.consumeChar(';')
+			}
+			continue
 		}
 		p.consumeWhitespaceAndComments()
 		
@@ -463,10 +478,10 @@ func (p *Parser) consumeWhitespaceAndComments() {
 		}
 		
 		// Check for comment
-		if p.pos+1 < len(p.input) && p.input[p.pos] == '/' && p.input[p.pos+1] == '*' {
+		if p.pos < len(p.input)-1 && p.input[p.pos] == '/' && p.input[p.pos+1] == '*' {
 			// Consume comment
 			p.pos += 2
-			for p.pos+1 < len(p.input) {
+			for p.pos < len(p.input)-1 {
 				if p.input[p.pos] == '*' && p.input[p.pos+1] == '/' {
 					p.pos += 2
 					break

@@ -521,3 +521,37 @@ func TestParserValueWithFunction(t *testing.T) {
 		t.Errorf("expected value to contain 'calc(', got '%s'", rule.Declarations[1].Value)
 	}
 }
+
+func TestParserMalformedCSS(t *testing.T) {
+	tests := []struct {
+		name string
+		css  string
+	}{
+		{
+			name: "missing property value",
+			css:  `p { color: }`,
+		},
+		{
+			name: "missing colon",
+			css:  `p { color red; }`,
+		},
+		{
+			name: "unclosed comment at end",
+			css:  `p { color: red; } /* unclosed comment`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := NewParser(tt.css)
+			stylesheet, err := p.Parse()
+			// Parser should not panic
+			// Some malformed CSS may return errors, others may skip invalid parts
+			if err != nil {
+				t.Logf("Parse returned error (expected for some malformed CSS): %v", err)
+			} else if stylesheet != nil {
+				t.Logf("Parse succeeded, stylesheet has %d rules", len(stylesheet.Rules))
+			}
+		})
+	}
+}
