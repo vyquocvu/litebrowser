@@ -18,7 +18,6 @@ func main() {
 	// Initialize components
 	fetcher := net.NewFetcher()
 	parser := dom.NewParser()
-	jsRuntime := js.NewRuntime()
 	browser := ui.NewBrowser()
 
 	// Create a cancellable context for page loads
@@ -36,7 +35,7 @@ func main() {
 		currentLoadCtx, currentLoadCancel = context.WithCancel(context.Background())
 
 		// Load page asynchronously
-		loadPageAsync(browser, fetcher, parser, jsRuntime, url, currentLoadCtx)
+		loadPageAsync(browser, fetcher, parser, url, currentLoadCtx)
 	})
 
 	// Show browser window
@@ -50,7 +49,7 @@ type pageLoadResult struct {
 }
 
 // loadPageAsync fetches and displays a web page asynchronously
-func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsRuntime *js.Runtime, url string, ctx context.Context) {
+func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, url string, ctx context.Context) {
 	log.Printf("Navigating to: %s", url)
 
 	// Update browser state on main thread
@@ -95,7 +94,7 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 		}
 
 		// Update UI on main thread with content
-		updateUIWithContent(browser, jsRuntime, html, url)
+		updateUIWithContent(browser, html, url)
 	}()
 }
 
@@ -117,7 +116,7 @@ func updateUIWithError(browser *ui.Browser, err error, url string) {
 }
 
 // updateUIWithContent updates the UI with HTML content
-func updateUIWithContent(browser *ui.Browser, jsRuntime *js.Runtime, html string, url string) {
+func updateUIWithContent(browser *ui.Browser, html string, url string) {
 	log.Printf("Rendering page content")
 
 	// Fyne widgets are thread-safe and can be updated from any goroutine
@@ -144,20 +143,34 @@ func updateUIWithContent(browser *ui.Browser, jsRuntime *js.Runtime, html string
 	// Hide loading indicator
 	browser.HideLoading()
 
-	// Set HTML content for JS runtime
-	jsRuntime.SetHTMLContent(html)
+	// Get or create JS runtime for the active tab
+	tab := browser.ActiveTab()
+	if tab != nil {
+		if tab.GetJSRuntime() == nil {
+			jsRuntime := js.NewRuntime()
+			tab.SetJSRuntime(jsRuntime)
+		}
+		
+		jsRuntime := tab.GetJSRuntime()
+		
+		// Set HTML content for JS runtime
+		jsRuntime.SetHTMLContent(html)
 
-	// Run any JavaScript on the page (optional)
-	testScript := `console.log("Page loaded: " + document.title);`
-	_, err = jsRuntime.RunScript(testScript)
-	if err != nil {
-		log.Printf("Error running JavaScript: %v", err)
+		// Run any JavaScript on the page
+		testScript := `
+			console.log("Page loaded: " + document.title);
+			console.info("JavaScript runtime is active");
+		`
+		_, err = jsRuntime.RunScript(testScript)
+		if err != nil {
+			log.Printf("Error running JavaScript: %v", err)
+		}
 	}
 }
 
 // loadPage fetches and displays a web page (deprecated - use loadPageAsync)
-func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, jsRuntime *js.Runtime, url string) {
-	loadPageAsync(browser, fetcher, parser, jsRuntime, url, context.Background())
+func loadPage(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser, url string) {
+	loadPageAsync(browser, fetcher, parser, url, context.Background())
 }
 
 // extractTitle parses the HTML and returns the content of the <title> tag.

@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"github.com/vyquocvu/goosie/internal/js"
 	"github.com/vyquocvu/goosie/internal/renderer"
 )
 
@@ -47,11 +48,15 @@ type Browser struct {
 	refreshButton       *widget.Button
 	bookmarkButton      *widget.Button
 	settingsButton      *widget.Button
+	consoleButton       *widget.Button
 	loadingBar          *widget.ProgressBarInfinite
 	loadingBarContainer *fyne.Container
 	onNavigate          NavigationCallback
 	tabs                *container.DocTabs
 	tabItems            []*Tab
+	consolePanel        *ConsolePanel
+	consoleSplit        *container.Split
+	consoleVisible      bool
 }
 
 // Tab represents a single browser tab
@@ -63,6 +68,7 @@ type Tab struct {
 	htmlRenderer  *renderer.Renderer
 	state         *BrowserState
 	browser       *Browser
+	jsRuntime     *js.Runtime
 }
 
 // window interface to allow testing
@@ -100,7 +106,18 @@ func NewBrowser() *Browser {
 		loadingBar:          loadingBar,
 		loadingBarContainer: loadingBarContainer,
 		tabItems:            []*Tab{},
+		consoleVisible:      false,
 	}
+
+	// Create console panel
+	browser.consolePanel = NewConsolePanel()
+	browser.consolePanel.SetRefreshCallback(func() {
+		// Clear console messages in the active tab's runtime
+		if tab := browser.ActiveTab(); tab != nil && tab.jsRuntime != nil {
+			tab.jsRuntime.ClearConsoleMessages()
+			tab.jsRuntime.ClearJavaScriptErrors()
+		}
+	})
 
 	firstTab := browser.newTabInternal()
 	browser.tabItems = append(browser.tabItems, firstTab)
@@ -112,6 +129,7 @@ func NewBrowser() *Browser {
 	}
 	browser.tabs.OnSelected = func(tab *container.TabItem) {
 		browser.updateNavigationButtons()
+		browser.updateConsoleFromActiveTab()
 	}
 	browser.tabs.SetTabLocation(container.TabLocationTop)
 
@@ -214,15 +232,22 @@ func (b *Browser) Show() {
 	// Create navigation bar
 	navBar := container.NewBorder(nil, nil,
 		container.NewHBox(b.backButton, b.forwardButton, b.refreshButton),
-		container.NewHBox(b.bookmarkButton, b.settingsButton),
+		container.NewHBox(b.bookmarkButton, b.consoleButton, b.settingsButton),
 		b.urlEntry,
 	)
+
+	// Create main split container (tabs on top, console on bottom when visible)
+	b.consoleSplit = container.NewVSplit(
+		b.tabs,
+		b.consolePanel.GetContainer(),
+	)
+	b.consoleSplit.Offset = 1.0 // Start with console hidden (all space to tabs)
 
 	// Create main layout with 5px height loading bar
 	content := container.NewBorder(
 		container.NewVBox(navBar, b.loadingBarContainer),
 		nil, nil, nil,
-		b.tabs,
+		b.consoleSplit,
 	)
 
 	b.window.SetContent(content)
@@ -280,6 +305,11 @@ func (b *Browser) createNavigationControls() {
 	})
 	b.bookmarkButton.Disable()
 
+	// Console button
+	b.consoleButton = widget.NewButton("⊞", func() {
+		b.toggleConsole()
+	})
+
 	// Settings button
 	b.settingsButton = widget.NewButton("⚙", func() {
 		b.showSettings()
@@ -289,6 +319,16 @@ func (b *Browser) createNavigationControls() {
 // AsTabItem converts a Tab to a TabItem
 func (t *Tab) AsTabItem() *container.TabItem {
 	return container.NewTabItem(t.title, t.content)
+}
+
+// GetJSRuntime returns the tab's JavaScript runtime
+func (t *Tab) GetJSRuntime() *js.Runtime {
+	return t.jsRuntime
+}
+
+// SetJSRuntime sets the tab's JavaScript runtime
+func (t *Tab) SetJSRuntime(runtime *js.Runtime) {
+	t.jsRuntime = runtime
 }
 
 // toggleBookmark adds or removes the current page from bookmarks
@@ -452,4 +492,40 @@ func (b *Browser) showSettings() {
 	d := dialog.NewCustom("Settings", "Close", form, b.window)
 	d.Resize(fyne.NewSize(500, 300))
 	d.Show()
+}
+
+// toggleConsole shows or hides the console panel
+func (b *Browser) toggleConsole() {
+	if b.consoleVisible {
+		// Hide console
+		b.consoleSplit.Offset = 1.0
+		b.consoleVisible = false
+		b.consoleButton.SetText("⊞")
+	} else {
+		// Show console (allocate 30% of height to console)
+		b.consoleSplit.Offset = 0.7
+		b.consoleVisible = true
+		b.consoleButton.SetText("⊟")
+		b.updateConsoleFromActiveTab()
+	}
+	b.consoleButton.Refresh()
+	b.consoleSplit.Refresh()
+}
+
+// updateConsoleFromActiveTab updates the console panel with messages from the active tab
+func (b *Browser) updateConsoleFromActiveTab() {
+	tab := b.ActiveTab()
+	if tab == nil || tab.jsRuntime == nil {
+		b.consolePanel.Clear()
+		return
+	}
+	
+	// Get console messages from the tab's runtime
+	messages := tab.jsRuntime.GetConsoleMessages()
+	b.consolePanel.SetMessages(messages)
+}
+
+// GetConsolePanel returns the console panel
+func (b *Browser) GetConsolePanel() *ConsolePanel {
+	return b.consolePanel
 }
