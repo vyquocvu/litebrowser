@@ -32,6 +32,16 @@ type ConsoleMessage struct {
 	Data      interface{}   // Raw data for table display
 }
 
+// Console table formatting constants
+const (
+	tableArrayValueWidth    = 40
+	tableArrayValueTruncate = 37
+	tableMapKeyWidth        = 20
+	tableMapKeyTruncate     = 17
+	tableMapValueWidth      = 20
+	tableMapValueTruncate   = 17
+)
+
 // Runtime wraps the Goja JavaScript runtime
 type Runtime struct {
 	vm         *goja.Runtime
@@ -169,10 +179,10 @@ func (r *Runtime) setupConsoleAPI() {
 			tableStr.WriteString("├─────┼─────────────────────────────────────────┤\n")
 			for i, item := range v {
 				value := fmt.Sprintf("%v", item)
-				if len(value) > 40 {
-					value = value[:37] + "..."
+				if len(value) > tableArrayValueWidth {
+					value = value[:tableArrayValueTruncate] + "..."
 				}
-				tableStr.WriteString(fmt.Sprintf("│ %-3d │ %-40s│\n", i, value))
+				tableStr.WriteString(fmt.Sprintf("│ %-3d │ %-*s│\n", i, tableArrayValueWidth, value))
 			}
 			tableStr.WriteString("└─────┴─────────────────────────────────────────┘")
 		case map[string]interface{}:
@@ -182,14 +192,14 @@ func (r *Runtime) setupConsoleAPI() {
 			tableStr.WriteString("├─────────────────────┼──────────────────────┤\n")
 			for key, val := range v {
 				keyStr := key
-				if len(keyStr) > 20 {
-					keyStr = keyStr[:17] + "..."
+				if len(keyStr) > tableMapKeyWidth {
+					keyStr = keyStr[:tableMapKeyTruncate] + "..."
 				}
 				valStr := fmt.Sprintf("%v", val)
-				if len(valStr) > 20 {
-					valStr = valStr[:17] + "..."
+				if len(valStr) > tableMapValueWidth {
+					valStr = valStr[:tableMapValueTruncate] + "..."
 				}
-				tableStr.WriteString(fmt.Sprintf("│ %-20s│ %-20s│\n", keyStr, valStr))
+				tableStr.WriteString(fmt.Sprintf("│ %-*s│ %-*s│\n", tableMapKeyWidth, keyStr, tableMapValueWidth, valStr))
 			}
 			tableStr.WriteString("└─────────────────────┴──────────────────────┘")
 		default:
