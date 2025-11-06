@@ -397,9 +397,11 @@ func TestBoxModelLayout(t *testing.T) {
 	if layoutBox.Box.X != 10.0 {
 		t.Errorf("Box.X = %f; want 10.0", layoutBox.Box.X)
 	}
-
-	// Suppress unused variable warning
-	_ = layoutRoot
+	
+	// Verify layout root was created
+	if layoutRoot == nil {
+		t.Error("Layout root should not be nil")
+	}
 }
 
 // findNodeByClass is a helper to find a node by class attribute

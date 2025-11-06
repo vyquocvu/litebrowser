@@ -477,8 +477,8 @@ func parseFontSize(value string, parentFontSize float32) (float32, error) {
 	return 0, fmt.Errorf("unsupported font size unit")
 }
 
-// parseLength parses a CSS length value and returns its numeric value
-// Supports: px, em, rem, and keyword values (thin, medium, thick)
+// parseLength parses a CSS length value and returns its numeric value in pixels
+// Supports: px, em, rem, plain numbers (treated as px), and keyword values (thin, medium, thick)
 func parseLength(value string, fontSize float32) float32 {
 	value = strings.TrimSpace(value)
 	
@@ -498,7 +498,8 @@ func parseLength(value string, fontSize float32) float32 {
 	}
 	
 	// Parse numeric values with units
-	// Check rem before em since "rem" ends with "em"
+	// IMPORTANT: Check rem before em since "rem" ends with "em"
+	// Otherwise "1.5rem" would be incorrectly parsed as "1.5r" + "em"
 	if strings.HasSuffix(value, "rem") {
 		if val, err := strconv.ParseFloat(strings.TrimSuffix(value, "rem"), 32); err == nil {
 			// rem is relative to root font size (typically 16px)

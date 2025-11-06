@@ -195,7 +195,9 @@ func TestBoxModelWithBackgroundAndBorder(t *testing.T) {
 	if boxLayout.BorderTopWidth != 3.0 {
 		t.Errorf("Border width = %f; want 3.0", boxLayout.BorderTopWidth)
 	}
-
-	// Suppress unused variable warning
-	_ = layoutRoot
+	
+	// Verify layout root was created
+	if layoutRoot == nil {
+		t.Error("Layout root should not be nil")
+	}
 }

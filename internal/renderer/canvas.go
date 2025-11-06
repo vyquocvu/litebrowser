@@ -779,10 +779,10 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 	
 	case PaintBorder:
 		// Render borders as lines or rectangles
-		// For now, we'll render solid borders using rectangles for each side
+		// Borders meet at corners without overlapping
 		borderContainer := container.NewWithoutLayout()
 		
-		// Top border
+		// Top border (full width)
 		if cmd.BorderTopWidth > 0 && cmd.BorderTopStyle != "" && cmd.BorderTopStyle != "none" {
 			topBorder := canvas.NewRectangle(cmd.BorderTopColor)
 			topBorder.Resize(fyne.NewSize(cmd.Box.Width, cmd.BorderTopWidth))
@@ -790,15 +790,16 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 			borderContainer.Add(topBorder)
 		}
 		
-		// Right border
+		// Right border (height minus top and bottom border widths to avoid overlap)
 		if cmd.BorderRightWidth > 0 && cmd.BorderRightStyle != "" && cmd.BorderRightStyle != "none" {
 			rightBorder := canvas.NewRectangle(cmd.BorderRightColor)
-			rightBorder.Resize(fyne.NewSize(cmd.BorderRightWidth, cmd.Box.Height))
-			rightBorder.Move(fyne.NewPos(cmd.Box.Width-cmd.BorderRightWidth, 0))
+			rightHeight := cmd.Box.Height - cmd.BorderTopWidth - cmd.BorderBottomWidth
+			rightBorder.Resize(fyne.NewSize(cmd.BorderRightWidth, rightHeight))
+			rightBorder.Move(fyne.NewPos(cmd.Box.Width-cmd.BorderRightWidth, cmd.BorderTopWidth))
 			borderContainer.Add(rightBorder)
 		}
 		
-		// Bottom border
+		// Bottom border (full width)
 		if cmd.BorderBottomWidth > 0 && cmd.BorderBottomStyle != "" && cmd.BorderBottomStyle != "none" {
 			bottomBorder := canvas.NewRectangle(cmd.BorderBottomColor)
 			bottomBorder.Resize(fyne.NewSize(cmd.Box.Width, cmd.BorderBottomWidth))
@@ -806,11 +807,12 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 			borderContainer.Add(bottomBorder)
 		}
 		
-		// Left border
+		// Left border (height minus top and bottom border widths to avoid overlap)
 		if cmd.BorderLeftWidth > 0 && cmd.BorderLeftStyle != "" && cmd.BorderLeftStyle != "none" {
 			leftBorder := canvas.NewRectangle(cmd.BorderLeftColor)
-			leftBorder.Resize(fyne.NewSize(cmd.BorderLeftWidth, cmd.Box.Height))
-			leftBorder.Move(fyne.NewPos(0, 0))
+			leftHeight := cmd.Box.Height - cmd.BorderTopWidth - cmd.BorderBottomWidth
+			leftBorder.Resize(fyne.NewSize(cmd.BorderLeftWidth, leftHeight))
+			leftBorder.Move(fyne.NewPos(0, cmd.BorderTopWidth))
 			borderContainer.Add(leftBorder)
 		}
 		

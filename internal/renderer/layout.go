@@ -92,8 +92,10 @@ func (le *LayoutEngine) buildLayoutBox(node *RenderNode, x, y, availableWidth fl
 	// Compute layout
 	currentY := le.computeLayoutBox(node, layoutBox, x, y, availableWidth)
 	
-	// Update height based on children (includes margins and padding)
-	layoutBox.Box.Height = currentY - y + layoutBox.MarginBottom
+	// Update height based on children
+	// currentY includes the top margin, so we need to subtract it to get the actual content+padding height
+	// Bottom margin is also external and should not be included in height
+	layoutBox.Box.Height = currentY - (y + layoutBox.MarginTop)
 	
 	return layoutBox
 }
