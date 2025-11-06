@@ -86,17 +86,68 @@ func (le *LayoutEngine) buildLayoutBox(node *RenderNode, x, y, availableWidth fl
 		layoutBox.Display = DisplayInline // Text nodes are inline
 	}
 	
+	// Apply box model properties from computed style
+	le.applyBoxModel(node, layoutBox)
+	
 	// Compute layout
 	currentY := le.computeLayoutBox(node, layoutBox, x, y, availableWidth)
 	
-	// Update height based on children
-	layoutBox.Box.Height = currentY - y
+	// Update height based on children (includes margins and padding)
+	layoutBox.Box.Height = currentY - y + layoutBox.MarginBottom
 	
 	return layoutBox
 }
 
+// applyBoxModel applies box model properties (margin, padding, border) from computed style to layout box
+func (le *LayoutEngine) applyBoxModel(node *RenderNode, layoutBox *LayoutBox) {
+	if node.ComputedStyle == nil {
+		return
+	}
+	
+	// Get font size for em/rem calculations
+	fontSize := le.defaultFontSize
+	if node.ComputedStyle.FontSize > 0 {
+		fontSize = node.ComputedStyle.FontSize
+	}
+	
+	// Apply margins
+	layoutBox.MarginTop = parseLength(node.ComputedStyle.MarginTop, fontSize)
+	layoutBox.MarginRight = parseLength(node.ComputedStyle.MarginRight, fontSize)
+	layoutBox.MarginBottom = parseLength(node.ComputedStyle.MarginBottom, fontSize)
+	layoutBox.MarginLeft = parseLength(node.ComputedStyle.MarginLeft, fontSize)
+	
+	// Apply padding
+	layoutBox.PaddingTop = parseLength(node.ComputedStyle.PaddingTop, fontSize)
+	layoutBox.PaddingRight = parseLength(node.ComputedStyle.PaddingRight, fontSize)
+	layoutBox.PaddingBottom = parseLength(node.ComputedStyle.PaddingBottom, fontSize)
+	layoutBox.PaddingLeft = parseLength(node.ComputedStyle.PaddingLeft, fontSize)
+	
+	// Apply borders
+	layoutBox.BorderTopWidth = parseLength(node.ComputedStyle.BorderTopWidth, fontSize)
+	layoutBox.BorderRightWidth = parseLength(node.ComputedStyle.BorderRightWidth, fontSize)
+	layoutBox.BorderBottomWidth = parseLength(node.ComputedStyle.BorderBottomWidth, fontSize)
+	layoutBox.BorderLeftWidth = parseLength(node.ComputedStyle.BorderLeftWidth, fontSize)
+	
+	layoutBox.BorderTopStyle = node.ComputedStyle.BorderTopStyle
+	layoutBox.BorderRightStyle = node.ComputedStyle.BorderRightStyle
+	layoutBox.BorderBottomStyle = node.ComputedStyle.BorderBottomStyle
+	layoutBox.BorderLeftStyle = node.ComputedStyle.BorderLeftStyle
+	
+	layoutBox.BorderTopColor = node.ComputedStyle.BorderTopColor
+	layoutBox.BorderRightColor = node.ComputedStyle.BorderRightColor
+	layoutBox.BorderBottomColor = node.ComputedStyle.BorderBottomColor
+	layoutBox.BorderLeftColor = node.ComputedStyle.BorderLeftColor
+}
+
 // computeLayoutBox computes the layout for a single box
 func (le *LayoutEngine) computeLayoutBox(node *RenderNode, layoutBox *LayoutBox, x, y, availableWidth float32) float32 {
+	// Account for margins
+	x += layoutBox.MarginLeft
+	y += layoutBox.MarginTop
+	
+	// Reduce available width by horizontal margins
+	availableWidth -= (layoutBox.MarginLeft + layoutBox.MarginRight)
+	
 	layoutBox.Box.X = x
 	layoutBox.Box.Y = y
 	layoutBox.Box.Width = availableWidth
@@ -152,6 +203,13 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 		currentY += verticalSpacing
 	}
 	
+	// Add padding to the starting position
+	currentY += layoutBox.PaddingTop
+	childX := x + layoutBox.PaddingLeft
+	
+	// Reduce available width by horizontal padding
+	contentWidth := availableWidth - layoutBox.PaddingLeft - layoutBox.PaddingRight
+	
 	// Layout children
 	childY := currentY
 	
@@ -160,7 +218,7 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 	if node.IsBlock() && le.hasInlineContent(node) {
 		// Use inline layout for the children
 		lines, totalHeight := le.inlineLayoutEngine.LayoutInlineContent(
-			node, x, currentY, availableWidth, WhiteSpaceNormal,
+			node, childX, currentY, contentWidth, WhiteSpaceNormal,
 		)
 		
 		// Store line boxes in the layout box
@@ -185,17 +243,17 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 	} else if node.IsBlock() {
 		// Block elements: stack children vertically (when no inline content)
 		for _, child := range node.Children {
-			childLayoutBox := le.buildLayoutBox(child, x, childY, availableWidth)
+			childLayoutBox := le.buildLayoutBox(child, childX, childY, contentWidth)
 			if childLayoutBox != nil {
 				layoutBox.AddChild(childLayoutBox)
-				childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height
+				childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height + childLayoutBox.MarginBottom
 			}
 		}
 	} else {
 		// Inline elements: use inline layout engine
 		if le.hasInlineContent(node) {
 			lines, totalHeight := le.inlineLayoutEngine.LayoutInlineContent(
-				node, x, currentY, availableWidth, WhiteSpaceNormal,
+				node, childX, currentY, contentWidth, WhiteSpaceNormal,
 			)
 			
 			// Store line boxes in the layout box
@@ -220,14 +278,17 @@ func (le *LayoutEngine) computeElementLayout(node *RenderNode, layoutBox *Layout
 		} else {
 			// Fallback to old behavior for empty inline elements
 			for _, child := range node.Children {
-				childLayoutBox := le.buildLayoutBox(child, x, childY, availableWidth)
+				childLayoutBox := le.buildLayoutBox(child, childX, childY, contentWidth)
 				if childLayoutBox != nil {
 					layoutBox.AddChild(childLayoutBox)
-					childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height
+					childY = childLayoutBox.Box.Y + childLayoutBox.Box.Height + childLayoutBox.MarginBottom
 				}
 			}
 		}
 	}
+	
+	// Add bottom padding
+	childY += layoutBox.PaddingBottom
 	
 	// Add bottom spacing for certain elements
 	if verticalSpacing > 0 {

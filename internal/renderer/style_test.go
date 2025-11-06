@@ -104,8 +104,18 @@ func TestAdvancedStyleApplication(t *testing.T) {
 	if bodyNode.ComputedStyle.Width != "60vw" {
 		t.Errorf("expected width '60vw', got '%s'", bodyNode.ComputedStyle.Width)
 	}
-	if bodyNode.ComputedStyle.Margin != "15vh auto" {
-		t.Errorf("expected margin '15vh auto', got '%s'", bodyNode.ComputedStyle.Margin)
+	// Check margin shorthand was properly expanded
+	if bodyNode.ComputedStyle.MarginTop != "15vh" {
+		t.Errorf("expected margin-top '15vh', got '%s'", bodyNode.ComputedStyle.MarginTop)
+	}
+	if bodyNode.ComputedStyle.MarginRight != "auto" {
+		t.Errorf("expected margin-right 'auto', got '%s'", bodyNode.ComputedStyle.MarginRight)
+	}
+	if bodyNode.ComputedStyle.MarginBottom != "15vh" {
+		t.Errorf("expected margin-bottom '15vh', got '%s'", bodyNode.ComputedStyle.MarginBottom)
+	}
+	if bodyNode.ComputedStyle.MarginLeft != "auto" {
+		t.Errorf("expected margin-left 'auto', got '%s'", bodyNode.ComputedStyle.MarginLeft)
 	}
 	if bodyNode.ComputedStyle.FontFamily != "system-ui, sans-serif" {
 		t.Errorf("expected font-family 'system-ui, sans-serif', got '%s'", bodyNode.ComputedStyle.FontFamily)

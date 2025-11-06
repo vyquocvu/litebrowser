@@ -341,14 +341,121 @@ func (sm *StyleManager) applyDeclaration(node *RenderNode, decl css.Declaration)
 		}
 	case "width":
 		style.Width = decl.Value
-	case "margin":
-		style.Margin = decl.Value
+	case "height":
+		style.Height = decl.Value
 	case "font-family":
 		style.FontFamily = decl.Value
 	case "opacity":
 		if val, err := strconv.ParseFloat(decl.Value, 32); err == nil {
 			style.Opacity = float32(val)
 		}
+	
+	// Margin properties
+	case "margin":
+		// Shorthand: apply to all sides
+		values := parseBoxShorthand(decl.Value)
+		style.MarginTop = values[0]
+		style.MarginRight = values[1]
+		style.MarginBottom = values[2]
+		style.MarginLeft = values[3]
+	case "margin-top":
+		style.MarginTop = decl.Value
+	case "margin-right":
+		style.MarginRight = decl.Value
+	case "margin-bottom":
+		style.MarginBottom = decl.Value
+	case "margin-left":
+		style.MarginLeft = decl.Value
+	
+	// Padding properties
+	case "padding":
+		// Shorthand: apply to all sides
+		values := parseBoxShorthand(decl.Value)
+		style.PaddingTop = values[0]
+		style.PaddingRight = values[1]
+		style.PaddingBottom = values[2]
+		style.PaddingLeft = values[3]
+	case "padding-top":
+		style.PaddingTop = decl.Value
+	case "padding-right":
+		style.PaddingRight = decl.Value
+	case "padding-bottom":
+		style.PaddingBottom = decl.Value
+	case "padding-left":
+		style.PaddingLeft = decl.Value
+	
+	// Border width properties
+	case "border-width":
+		// Shorthand: apply to all sides
+		values := parseBoxShorthand(decl.Value)
+		style.BorderTopWidth = values[0]
+		style.BorderRightWidth = values[1]
+		style.BorderBottomWidth = values[2]
+		style.BorderLeftWidth = values[3]
+	case "border-top-width":
+		style.BorderTopWidth = decl.Value
+	case "border-right-width":
+		style.BorderRightWidth = decl.Value
+	case "border-bottom-width":
+		style.BorderBottomWidth = decl.Value
+	case "border-left-width":
+		style.BorderLeftWidth = decl.Value
+	
+	// Border style properties
+	case "border-style":
+		// Shorthand: apply to all sides
+		values := parseBoxShorthand(decl.Value)
+		style.BorderTopStyle = values[0]
+		style.BorderRightStyle = values[1]
+		style.BorderBottomStyle = values[2]
+		style.BorderLeftStyle = values[3]
+	case "border-top-style":
+		style.BorderTopStyle = decl.Value
+	case "border-right-style":
+		style.BorderRightStyle = decl.Value
+	case "border-bottom-style":
+		style.BorderBottomStyle = decl.Value
+	case "border-left-style":
+		style.BorderLeftStyle = decl.Value
+	
+	// Border color properties
+	case "border-color":
+		// Shorthand: apply to all sides
+		values := strings.Fields(decl.Value)
+		colors := parseBoxShorthandColors(values)
+		style.BorderTopColor = colors[0]
+		style.BorderRightColor = colors[1]
+		style.BorderBottomColor = colors[2]
+		style.BorderLeftColor = colors[3]
+	case "border-top-color":
+		if val, err := parseColor(decl.Value); err == nil {
+			style.BorderTopColor = val
+		}
+	case "border-right-color":
+		if val, err := parseColor(decl.Value); err == nil {
+			style.BorderRightColor = val
+		}
+	case "border-bottom-color":
+		if val, err := parseColor(decl.Value); err == nil {
+			style.BorderBottomColor = val
+		}
+	case "border-left-color":
+		if val, err := parseColor(decl.Value); err == nil {
+			style.BorderLeftColor = val
+		}
+	
+	// Border shorthand properties
+	case "border":
+		// Parse "border: 1px solid black" format
+		parseBorderShorthand(decl.Value, style, "all")
+	case "border-top":
+		parseBorderShorthand(decl.Value, style, "top")
+	case "border-right":
+		parseBorderShorthand(decl.Value, style, "right")
+	case "border-bottom":
+		parseBorderShorthand(decl.Value, style, "bottom")
+	case "border-left":
+		parseBorderShorthand(decl.Value, style, "left")
 	}
 }
 
@@ -368,6 +475,51 @@ func parseFontSize(value string, parentFontSize float32) (float32, error) {
 		return float32(val) * parentFontSize, nil
 	}
 	return 0, fmt.Errorf("unsupported font size unit")
+}
+
+// parseLength parses a CSS length value and returns its numeric value
+// Supports: px, em, rem, and keyword values (thin, medium, thick)
+func parseLength(value string, fontSize float32) float32 {
+	value = strings.TrimSpace(value)
+	
+	// Handle empty or "0" values
+	if value == "" || value == "0" {
+		return 0
+	}
+	
+	// Handle keyword values for border widths
+	switch value {
+	case "thin":
+		return 1.0
+	case "medium":
+		return 3.0
+	case "thick":
+		return 5.0
+	}
+	
+	// Parse numeric values with units
+	// Check rem before em since "rem" ends with "em"
+	if strings.HasSuffix(value, "rem") {
+		if val, err := strconv.ParseFloat(strings.TrimSuffix(value, "rem"), 32); err == nil {
+			// rem is relative to root font size (typically 16px)
+			return float32(val) * 16.0
+		}
+	} else if strings.HasSuffix(value, "px") {
+		if val, err := strconv.ParseFloat(strings.TrimSuffix(value, "px"), 32); err == nil {
+			return float32(val)
+		}
+	} else if strings.HasSuffix(value, "em") {
+		if val, err := strconv.ParseFloat(strings.TrimSuffix(value, "em"), 32); err == nil {
+			return float32(val) * fontSize
+		}
+	} else {
+		// Try to parse as plain number (treated as px)
+		if val, err := strconv.ParseFloat(value, 32); err == nil {
+			return float32(val)
+		}
+	}
+	
+	return 0
 }
 
 func parseColor(value string) (color.Color, error) {
@@ -400,4 +552,225 @@ func parseHexColor(hex string) (color.Color, error) {
 		B: uint8(rgb),
 		A: 255,
 	}, nil
+}
+
+// parseBoxShorthand parses CSS box model shorthand values
+// Returns [top, right, bottom, left] values
+// Supports: 1 value (all), 2 values (vertical horizontal), 3 values (top horizontal bottom), 4 values (top right bottom left)
+func parseBoxShorthand(value string) [4]string {
+	values := strings.Fields(value)
+	var result [4]string
+	
+	switch len(values) {
+	case 1:
+		// All sides same
+		result[0] = values[0]
+		result[1] = values[0]
+		result[2] = values[0]
+		result[3] = values[0]
+	case 2:
+		// Vertical horizontal
+		result[0] = values[0] // top
+		result[1] = values[1] // right
+		result[2] = values[0] // bottom
+		result[3] = values[1] // left
+	case 3:
+		// Top horizontal bottom
+		result[0] = values[0] // top
+		result[1] = values[1] // right
+		result[2] = values[2] // bottom
+		result[3] = values[1] // left
+	case 4:
+		// Top right bottom left
+		result[0] = values[0]
+		result[1] = values[1]
+		result[2] = values[2]
+		result[3] = values[3]
+	default:
+		// Invalid, return zeros
+		result[0] = "0"
+		result[1] = "0"
+		result[2] = "0"
+		result[3] = "0"
+	}
+	
+	return result
+}
+
+// parseBoxShorthandColors parses color values for box model shorthand
+func parseBoxShorthandColors(values []string) [4]color.Color {
+	defaultColor := color.Black
+	var result [4]color.Color
+	
+	switch len(values) {
+	case 1:
+		// All sides same
+		if c, err := parseColor(values[0]); err == nil {
+			result[0] = c
+			result[1] = c
+			result[2] = c
+			result[3] = c
+		} else {
+			result[0] = defaultColor
+			result[1] = defaultColor
+			result[2] = defaultColor
+			result[3] = defaultColor
+		}
+	case 2:
+		// Vertical horizontal
+		c0, err0 := parseColor(values[0])
+		c1, err1 := parseColor(values[1])
+		if err0 == nil {
+			result[0] = c0
+			result[2] = c0
+		} else {
+			result[0] = defaultColor
+			result[2] = defaultColor
+		}
+		if err1 == nil {
+			result[1] = c1
+			result[3] = c1
+		} else {
+			result[1] = defaultColor
+			result[3] = defaultColor
+		}
+	case 3:
+		// Top horizontal bottom
+		for i := 0; i < 3; i++ {
+			if c, err := parseColor(values[i]); err == nil {
+				result[i] = c
+			} else {
+				result[i] = defaultColor
+			}
+		}
+		// left = horizontal
+		if c, err := parseColor(values[1]); err == nil {
+			result[3] = c
+		} else {
+			result[3] = defaultColor
+		}
+	case 4:
+		// Top right bottom left
+		for i := 0; i < 4; i++ {
+			if c, err := parseColor(values[i]); err == nil {
+				result[i] = c
+			} else {
+				result[i] = defaultColor
+			}
+		}
+	default:
+		// Invalid, return default
+		result[0] = defaultColor
+		result[1] = defaultColor
+		result[2] = defaultColor
+		result[3] = defaultColor
+	}
+	
+	return result
+}
+
+// parseBorderShorthand parses the border shorthand property
+// Format: "width style color" in any order
+func parseBorderShorthand(value string, style *Style, side string) {
+	parts := strings.Fields(value)
+	
+	var width, borderStyle, borderColor string
+	
+	// Parse each part
+	for _, part := range parts {
+		// Check if it's a width (has px, em, etc. or is a number)
+		if strings.HasSuffix(part, "px") || strings.HasSuffix(part, "em") || 
+		   strings.HasSuffix(part, "rem") || part == "thin" || part == "medium" || part == "thick" {
+			width = part
+		} else if isBorderStyle(part) {
+			borderStyle = part
+		} else {
+			// Assume it's a color
+			borderColor = part
+		}
+	}
+	
+	// Apply to the specified side(s)
+	switch side {
+	case "all":
+		if width != "" {
+			style.BorderTopWidth = width
+			style.BorderRightWidth = width
+			style.BorderBottomWidth = width
+			style.BorderLeftWidth = width
+		}
+		if borderStyle != "" {
+			style.BorderTopStyle = borderStyle
+			style.BorderRightStyle = borderStyle
+			style.BorderBottomStyle = borderStyle
+			style.BorderLeftStyle = borderStyle
+		}
+		if borderColor != "" {
+			if c, err := parseColor(borderColor); err == nil {
+				style.BorderTopColor = c
+				style.BorderRightColor = c
+				style.BorderBottomColor = c
+				style.BorderLeftColor = c
+			}
+		}
+	case "top":
+		if width != "" {
+			style.BorderTopWidth = width
+		}
+		if borderStyle != "" {
+			style.BorderTopStyle = borderStyle
+		}
+		if borderColor != "" {
+			if c, err := parseColor(borderColor); err == nil {
+				style.BorderTopColor = c
+			}
+		}
+	case "right":
+		if width != "" {
+			style.BorderRightWidth = width
+		}
+		if borderStyle != "" {
+			style.BorderRightStyle = borderStyle
+		}
+		if borderColor != "" {
+			if c, err := parseColor(borderColor); err == nil {
+				style.BorderRightColor = c
+			}
+		}
+	case "bottom":
+		if width != "" {
+			style.BorderBottomWidth = width
+		}
+		if borderStyle != "" {
+			style.BorderBottomStyle = borderStyle
+		}
+		if borderColor != "" {
+			if c, err := parseColor(borderColor); err == nil {
+				style.BorderBottomColor = c
+			}
+		}
+	case "left":
+		if width != "" {
+			style.BorderLeftWidth = width
+		}
+		if borderStyle != "" {
+			style.BorderLeftStyle = borderStyle
+		}
+		if borderColor != "" {
+			if c, err := parseColor(borderColor); err == nil {
+				style.BorderLeftColor = c
+			}
+		}
+	}
+}
+
+// isBorderStyle checks if a string is a valid border style
+func isBorderStyle(s string) bool {
+	styles := []string{"none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset"}
+	for _, style := range styles {
+		if s == style {
+			return true
+		}
+	}
+	return false
 }

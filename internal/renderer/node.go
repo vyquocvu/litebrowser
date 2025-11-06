@@ -45,9 +45,35 @@ type Style struct {
 	Color           color.Color
 	BackgroundColor color.Color
 	Width           string
-	Margin          string
+	Height          string
 	FontFamily      string
 	Opacity         float32
+	
+	// Box model properties
+	MarginTop       string
+	MarginRight     string
+	MarginBottom    string
+	MarginLeft      string
+	
+	PaddingTop      string
+	PaddingRight    string
+	PaddingBottom   string
+	PaddingLeft     string
+	
+	BorderTopWidth     string
+	BorderRightWidth   string
+	BorderBottomWidth  string
+	BorderLeftWidth    string
+	
+	BorderTopStyle     string
+	BorderRightStyle   string
+	BorderBottomStyle  string
+	BorderLeftStyle    string
+	
+	BorderTopColor     color.Color
+	BorderRightColor   color.Color
+	BorderBottomColor  color.Color
+	BorderLeftColor    color.Color
 }
 
 // Box represents the layout box for a render node
