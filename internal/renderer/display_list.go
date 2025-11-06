@@ -17,6 +17,8 @@ const (
 	PaintImage
 	// PaintLink represents a link paint command
 	PaintLink
+	// PaintBorder represents a border paint command
+	PaintBorder
 )
 
 // PaintCommand represents a single paint operation
@@ -44,6 +46,20 @@ type PaintCommand struct {
 	// Link-specific fields
 	LinkURL  string
 	LinkText string
+	
+	// Border-specific fields
+	BorderTopWidth    float32
+	BorderRightWidth  float32
+	BorderBottomWidth float32
+	BorderLeftWidth   float32
+	BorderTopColor    color.Color
+	BorderRightColor  color.Color
+	BorderBottomColor color.Color
+	BorderLeftColor   color.Color
+	BorderTopStyle    string
+	BorderRightStyle  string
+	BorderBottomStyle string
+	BorderLeftStyle   string
 }
 
 // DisplayList represents a list of paint commands
@@ -131,6 +147,9 @@ func (dlb *DisplayListBuilder) buildRecursive(layoutBox *LayoutBox, renderMap ma
 	if !exists {
 		return
 	}
+	
+	// Add border paint command if the element has borders
+	dlb.addBorderCommand(layoutBox, renderNode, displayList)
 	
 	// Check if this layout box has inline content (LineBoxes)
 	if len(layoutBox.LineBoxes) > 0 {
@@ -307,4 +326,47 @@ func (dlb *DisplayListBuilder) extractText(node *RenderNode) string {
 	}
 	
 	return strings.TrimSpace(result.String())
+}
+
+// addBorderCommand adds border paint commands for an element
+func (dlb *DisplayListBuilder) addBorderCommand(layoutBox *LayoutBox, renderNode *RenderNode, displayList *DisplayList) {
+	// Check if any border is present
+	hasBorder := false
+	
+	// Check if any border width is set and style is not "none" or empty
+	if (layoutBox.BorderTopWidth > 0 && layoutBox.BorderTopStyle != "" && layoutBox.BorderTopStyle != "none") ||
+		(layoutBox.BorderRightWidth > 0 && layoutBox.BorderRightStyle != "" && layoutBox.BorderRightStyle != "none") ||
+		(layoutBox.BorderBottomWidth > 0 && layoutBox.BorderBottomStyle != "" && layoutBox.BorderBottomStyle != "none") ||
+		(layoutBox.BorderLeftWidth > 0 && layoutBox.BorderLeftStyle != "" && layoutBox.BorderLeftStyle != "none") {
+		hasBorder = true
+	}
+	
+	if !hasBorder {
+		return
+	}
+	
+	// Create border paint command
+	cmd := &PaintCommand{
+		Type:   PaintBorder,
+		NodeID: layoutBox.NodeID,
+		Node:   renderNode,
+		Box:    layoutBox.Box,
+		
+		BorderTopWidth:    layoutBox.BorderTopWidth,
+		BorderRightWidth:  layoutBox.BorderRightWidth,
+		BorderBottomWidth: layoutBox.BorderBottomWidth,
+		BorderLeftWidth:   layoutBox.BorderLeftWidth,
+		
+		BorderTopStyle:    layoutBox.BorderTopStyle,
+		BorderRightStyle:  layoutBox.BorderRightStyle,
+		BorderBottomStyle: layoutBox.BorderBottomStyle,
+		BorderLeftStyle:   layoutBox.BorderLeftStyle,
+		
+		BorderTopColor:    layoutBox.BorderTopColor,
+		BorderRightColor:  layoutBox.BorderRightColor,
+		BorderBottomColor: layoutBox.BorderBottomColor,
+		BorderLeftColor:   layoutBox.BorderLeftColor,
+	}
+	
+	displayList.AddCommand(cmd)
 }

@@ -1,5 +1,7 @@
 package renderer
 
+import "image/color"
+
 // DisplayType represents the display type of a layout box
 type DisplayType string
 
@@ -39,6 +41,22 @@ type LayoutBox struct {
 	MarginRight  float32
 	MarginBottom float32
 	MarginLeft   float32
+	
+	// Border (for box model support)
+	BorderTopWidth    float32
+	BorderRightWidth  float32
+	BorderBottomWidth float32
+	BorderLeftWidth   float32
+	
+	BorderTopStyle    string
+	BorderRightStyle  string
+	BorderBottomStyle string
+	BorderLeftStyle   string
+	
+	BorderTopColor    color.Color
+	BorderRightColor  color.Color
+	BorderBottomColor color.Color
+	BorderLeftColor   color.Color
 	
 	// Inline layout information
 	LineBoxes []*LineBox // Line boxes for inline content (if this contains inline children)

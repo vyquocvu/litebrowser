@@ -776,6 +776,50 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 				*objects = append(*objects, label)
 			}
 		}
+	
+	case PaintBorder:
+		// Render borders as lines or rectangles
+		// Borders meet at corners without overlapping
+		borderContainer := container.NewWithoutLayout()
+		
+		// Top border (full width)
+		if cmd.BorderTopWidth > 0 && cmd.BorderTopStyle != "" && cmd.BorderTopStyle != "none" {
+			topBorder := canvas.NewRectangle(cmd.BorderTopColor)
+			topBorder.Resize(fyne.NewSize(cmd.Box.Width, cmd.BorderTopWidth))
+			topBorder.Move(fyne.NewPos(0, 0))
+			borderContainer.Add(topBorder)
+		}
+		
+		// Right border (height minus top and bottom border widths to avoid overlap)
+		if cmd.BorderRightWidth > 0 && cmd.BorderRightStyle != "" && cmd.BorderRightStyle != "none" {
+			rightBorder := canvas.NewRectangle(cmd.BorderRightColor)
+			rightHeight := cmd.Box.Height - cmd.BorderTopWidth - cmd.BorderBottomWidth
+			rightBorder.Resize(fyne.NewSize(cmd.BorderRightWidth, rightHeight))
+			rightBorder.Move(fyne.NewPos(cmd.Box.Width-cmd.BorderRightWidth, cmd.BorderTopWidth))
+			borderContainer.Add(rightBorder)
+		}
+		
+		// Bottom border (full width)
+		if cmd.BorderBottomWidth > 0 && cmd.BorderBottomStyle != "" && cmd.BorderBottomStyle != "none" {
+			bottomBorder := canvas.NewRectangle(cmd.BorderBottomColor)
+			bottomBorder.Resize(fyne.NewSize(cmd.Box.Width, cmd.BorderBottomWidth))
+			bottomBorder.Move(fyne.NewPos(0, cmd.Box.Height-cmd.BorderBottomWidth))
+			borderContainer.Add(bottomBorder)
+		}
+		
+		// Left border (height minus top and bottom border widths to avoid overlap)
+		if cmd.BorderLeftWidth > 0 && cmd.BorderLeftStyle != "" && cmd.BorderLeftStyle != "none" {
+			leftBorder := canvas.NewRectangle(cmd.BorderLeftColor)
+			leftHeight := cmd.Box.Height - cmd.BorderTopWidth - cmd.BorderBottomWidth
+			leftBorder.Resize(fyne.NewSize(cmd.BorderLeftWidth, leftHeight))
+			leftBorder.Move(fyne.NewPos(0, cmd.BorderTopWidth))
+			borderContainer.Add(leftBorder)
+		}
+		
+		if len(borderContainer.Objects) > 0 {
+			borderContainer.Resize(fyne.NewSize(cmd.Box.Width, cmd.Box.Height))
+			*objects = append(*objects, borderContainer)
+		}
 	}
 }
 
