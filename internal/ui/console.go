@@ -11,17 +11,17 @@ import (
 
 // ConsolePanel represents the developer console panel
 type ConsolePanel struct {
-	container     *fyne.Container
-	messageList   *widget.List
-	messages      []js.ConsoleMessage
-	clearButton   *widget.Button
-	closeButton   *widget.Button
-	filterSelect  *widget.Select
-	filterLevel   string
-	onRefresh     func()
-	onClose       func()
+	container       *fyne.Container
+	messageList     *widget.List
+	messages        []js.ConsoleMessage
+	clearButton     *widget.Button
+	closeButton     *widget.Button
+	filterSelect    *widget.Select
+	filterLevel     string
+	onRefresh       func()
+	onClose         func()
 	errorCountLabel *widget.Label
-	errorCount    int
+	errorCount      int
 }
 
 // NewConsolePanel creates a new console panel
@@ -146,20 +146,20 @@ func (cp *ConsolePanel) GetContainer() *fyne.Container {
 // AddMessage adds a new message to the console
 func (cp *ConsolePanel) AddMessage(msg js.ConsoleMessage) {
 	cp.messages = append(cp.messages, msg)
-	
+
 	// Update error count
 	if msg.Level == "error" {
 		cp.errorCount++
 		cp.errorCountLabel.SetText(fmt.Sprintf("Errors: %d", cp.errorCount))
 	}
-	
+
 	cp.messageList.Refresh()
 }
 
 // SetMessages replaces all messages in the console
 func (cp *ConsolePanel) SetMessages(messages []js.ConsoleMessage) {
 	cp.messages = messages
-	
+
 	// Count errors
 	cp.errorCount = 0
 	for _, msg := range messages {
@@ -168,7 +168,7 @@ func (cp *ConsolePanel) SetMessages(messages []js.ConsoleMessage) {
 		}
 	}
 	cp.errorCountLabel.SetText(fmt.Sprintf("Errors: %d", cp.errorCount))
-	
+
 	cp.messageList.Refresh()
 }
 
@@ -190,7 +190,7 @@ func (cp *ConsolePanel) getFilteredMessageCount() int {
 	if cp.filterLevel == "all" {
 		return len(cp.messages)
 	}
-	
+
 	count := 0
 	for _, msg := range cp.messages {
 		if msg.Level == cp.filterLevel {
@@ -208,7 +208,7 @@ func (cp *ConsolePanel) getFilteredMessage(index int) *js.ConsoleMessage {
 		}
 		return nil
 	}
-	
+
 	// Find the nth message matching the filter
 	currentIndex := 0
 	for i := range cp.messages {
