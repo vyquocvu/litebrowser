@@ -253,7 +253,9 @@ func (r *Renderer) resolveURL(href string) string {
 
 func (r *Renderer) onImageLoaded(src string) {
 	if r.canvasRenderer.window != nil {
-		r.canvasRenderer.window.Canvas().Refresh(r.canvasRenderer.window.Content())
+		fyne.Do(func() {
+			r.canvasRenderer.window.Canvas().Refresh(r.canvasRenderer.window.Content())
+		})
 	}
 }
 

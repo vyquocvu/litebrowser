@@ -57,6 +57,7 @@ type Browser struct {
 	consolePanel        *ConsolePanel
 	consoleSplit        *container.Split
 	consoleVisible      bool
+	consoleContainer    *fyne.Container
 }
 
 // Tab represents a single browser tab
@@ -110,7 +111,7 @@ func NewBrowser() *Browser {
 	}
 
 	// Create console panel
-	browser.consolePanel = NewConsolePanel()
+	browser.consolePanel = NewConsolePanel(browser.toggleConsole)
 	browser.consolePanel.SetRefreshCallback(func() {
 		// Clear console messages in the active tab's runtime
 		if tab := browser.ActiveTab(); tab != nil && tab.jsRuntime != nil {
@@ -136,6 +137,17 @@ func NewBrowser() *Browser {
 	browser.createNavigationControls()
 
 	return browser
+}
+
+// toggleConsole toggles the visibility of the console panel
+func (b *Browser) toggleConsole() {
+	if b.consoleVisible {
+		b.consoleContainer.Hide()
+	} else {
+		b.consoleContainer.Show()
+	}
+	b.consoleVisible = !b.consoleVisible
+	b.window.Content().Refresh()
 }
 
 // newTabInternal creates a new tab without adding it to the tab container
@@ -244,13 +256,24 @@ func (b *Browser) Show() {
 	b.consoleSplit.Offset = 1.0 // Start with console hidden (all space to tabs)
 
 	// Create main layout with 5px height loading bar
-	content := container.NewBorder(
+	container.NewBorder(
 		container.NewVBox(navBar, b.loadingBarContainer),
 		nil, nil, nil,
 		b.consoleSplit,
 	)
 
-	b.window.SetContent(content)
+	// Main view with a split for the console
+	mainView := container.NewVSplit(b.tabs, b.consolePanel.CanvasObject())
+	mainView.Offset = 1.0 // Initially hide console
+
+	// Create a container for the console and hide it initially
+	b.consoleContainer = container.NewMax(b.consolePanel.CanvasObject())
+	b.consoleContainer.Hide()
+
+	// Combine the main content and the console container
+	contentWithConsole := container.NewBorder(navBar, nil, nil, nil, container.NewVSplit(b.tabs, b.consoleContainer))
+
+	b.window.SetContent(contentWithConsole)
 	b.window.ShowAndRun()
 }
 
@@ -492,24 +515,6 @@ func (b *Browser) showSettings() {
 	d := dialog.NewCustom("Settings", "Close", form, b.window)
 	d.Resize(fyne.NewSize(500, 300))
 	d.Show()
-}
-
-// toggleConsole shows or hides the console panel
-func (b *Browser) toggleConsole() {
-	if b.consoleVisible {
-		// Hide console
-		b.consoleSplit.Offset = 1.0
-		b.consoleVisible = false
-		b.consoleButton.SetText("⊞")
-	} else {
-		// Show console (allocate 30% of height to console)
-		b.consoleSplit.Offset = 0.7
-		b.consoleVisible = true
-		b.consoleButton.SetText("⊟")
-		b.updateConsoleFromActiveTab()
-	}
-	b.consoleButton.Refresh()
-	b.consoleSplit.Refresh()
 }
 
 // updateConsoleFromActiveTab updates the console panel with messages from the active tab

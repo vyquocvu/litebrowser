@@ -15,19 +15,22 @@ type ConsolePanel struct {
 	messageList   *widget.List
 	messages      []js.ConsoleMessage
 	clearButton   *widget.Button
+	closeButton   *widget.Button
 	filterSelect  *widget.Select
 	filterLevel   string
 	onRefresh     func()
+	onClose       func()
 	errorCountLabel *widget.Label
 	errorCount    int
 }
 
 // NewConsolePanel creates a new console panel
-func NewConsolePanel() *ConsolePanel {
+func NewConsolePanel(onClose func()) *ConsolePanel {
 	panel := &ConsolePanel{
 		messages:    make([]js.ConsoleMessage, 0),
 		filterLevel: "all",
 		errorCount:  0,
+		onClose:     onClose,
 	}
 
 	// Create error count label
@@ -44,17 +47,14 @@ func NewConsolePanel() *ConsolePanel {
 		}
 	})
 
-	// Create filter dropdown
-	panel.filterSelect = widget.NewSelect(
-		[]string{"all", "log", "error", "warn", "info", "table"},
-		func(selected string) {
-			panel.filterLevel = selected
-			panel.messageList.Refresh()
-		},
-	)
-	panel.filterSelect.SetSelected("all")
+	// Create close button
+	panel.closeButton = widget.NewButton("X", func() {
+		if panel.onClose != nil {
+			panel.onClose()
+		}
+	})
 
-	// Create message list
+	// Create message list first, so it's available for the filter's OnChange callback
 	panel.messageList = widget.NewList(
 		func() int {
 			return panel.getFilteredMessageCount()
@@ -63,13 +63,13 @@ func NewConsolePanel() *ConsolePanel {
 			// Template for list items
 			timeLabel := widget.NewLabel("")
 			timeLabel.TextStyle.Monospace = true
-			
+
 			levelLabel := widget.NewLabel("")
 			levelLabel.TextStyle.Bold = true
-			
+
 			messageLabel := widget.NewLabel("")
 			messageLabel.Wrapping = fyne.TextWrapWord
-			
+
 			return container.NewBorder(
 				container.NewHBox(timeLabel, levelLabel),
 				nil, nil, nil,
@@ -83,10 +83,10 @@ func NewConsolePanel() *ConsolePanel {
 			}
 
 			border := item.(*fyne.Container)
-			topContainer := border.Objects[0].(*fyne.Container)
+			topContainer := border.Objects[1].(*fyne.Container)
 			timeLabel := topContainer.Objects[0].(*widget.Label)
 			levelLabel := topContainer.Objects[1].(*widget.Label)
-			messageLabel := border.Objects[1].(*widget.Label)
+			messageLabel := border.Objects[0].(*widget.Label)
 
 			// Format time
 			timeLabel.SetText(msg.Timestamp.Format("15:04:05"))
@@ -95,44 +95,43 @@ func NewConsolePanel() *ConsolePanel {
 			switch msg.Level {
 			case "error":
 				levelLabel.SetText("[ERROR]")
-				levelLabel.Importance = widget.HighImportance
+				// Use a theme color that indicates an error
+				// This requires a custom theme or direct color setting if available
 			case "warn":
 				levelLabel.SetText("[WARN]")
-				levelLabel.Importance = widget.MediumImportance
 			case "info":
 				levelLabel.SetText("[INFO]")
-				levelLabel.Importance = widget.LowImportance
+			case "log":
+				levelLabel.SetText("[LOG]")
 			case "table":
 				levelLabel.SetText("[TABLE]")
-				levelLabel.Importance = widget.LowImportance
-			default:
-				levelLabel.SetText("[LOG]")
-				levelLabel.Importance = widget.LowImportance
 			}
 
-			// Set message
-			messageLabel.SetText(msg.Message)
+			// Set message content
+			messageLabel.SetText(fmt.Sprintf("%v", msg.Data))
 		},
 	)
 
-	// Create toolbar
-	toolbar := container.NewBorder(
+	// Create filter dropdown
+	panel.filterSelect = widget.NewSelect(
+		[]string{"all", "log", "error", "warn", "info", "table"},
+		func(selected string) {
+			panel.filterLevel = selected
+			panel.messageList.Refresh()
+		},
+	)
+	panel.filterSelect.SetSelected("all")
+
+	// Create top bar with controls
+	topBar := container.NewBorder(
 		nil, nil,
-		container.NewHBox(
-			widget.NewLabel("Filter:"),
-			panel.filterSelect,
-		),
-		container.NewHBox(
-			panel.errorCountLabel,
-			panel.clearButton,
-		),
-		nil,
+		container.NewHBox(panel.clearButton, panel.closeButton),
+		container.NewHBox(widget.NewLabel("Filter:"), panel.filterSelect, panel.errorCountLabel),
 	)
 
-	// Create main container with toolbar at top and scrollable message list
+	// Create main container
 	panel.container = container.NewBorder(
-		toolbar,
-		nil, nil, nil,
+		topBar, nil, nil, nil,
 		panel.messageList,
 	)
 
@@ -226,4 +225,9 @@ func (cp *ConsolePanel) getFilteredMessage(index int) *js.ConsoleMessage {
 // GetErrorCount returns the current error count
 func (cp *ConsolePanel) GetErrorCount() int {
 	return cp.errorCount
+}
+
+// CanvasObject returns the underlying canvas object for the panel
+func (p *ConsolePanel) CanvasObject() fyne.CanvasObject {
+	return p.container
 }
