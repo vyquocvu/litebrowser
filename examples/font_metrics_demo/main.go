@@ -1,4 +1,4 @@
-package font_metrics_demo
+package main
 
 import (
 	"fmt"
@@ -6,11 +6,15 @@ import (
 	"fyne.io/fyne/v2"
 )
 
+func main() {
+	RunDemo()
+}
+
 // This example demonstrates the accurate text measurement capabilities
 // using the new FontMetrics module.
 func RunDemo() {
 	fmt.Println("Font Metrics Demo")
-	fmt.Println("=================\n")
+	fmt.Println("=================")
 
 	// Create a FontMetrics instance
 	fm := renderer.NewFontMetrics(16.0)
@@ -25,7 +29,8 @@ func RunDemo() {
 	fmt.Printf("Width: %.2f pixels\n", metrics1.Width)
 	fmt.Printf("Height: %.2f pixels\n", metrics1.Height)
 	fmt.Printf("Ascent: %.2f pixels\n", metrics1.Ascent)
-	fmt.Printf("Descent: %.2f pixels\n\n", metrics1.Descent)
+	fmt.Printf("Descent: %.2f pixels\n", metrics1.Descent)
+	fmt.Println()
 
 	// Example 2: Bold text measurement
 	fmt.Println("Example 2: Bold Text")
@@ -35,7 +40,8 @@ func RunDemo() {
 	metrics2 := fm.MeasureText(text2, 16.0, fyne.TextStyle{Bold: true})
 	fmt.Printf("Text: %q (bold)\n", text2)
 	fmt.Printf("Width: %.2f pixels\n", metrics2.Width)
-	fmt.Printf("Height: %.2f pixels\n\n", metrics2.Height)
+	fmt.Printf("Height: %.2f pixels\n", metrics2.Height)
+	fmt.Println()
 
 	// Example 3: Different font sizes
 	fmt.Println("Example 3: Font Size Comparison")
@@ -73,7 +79,8 @@ func RunDemo() {
 	fmt.Printf("Single line width: %.2f pixels\n", singleLine.Width)
 	fmt.Printf("Wrapped width (max %0.f): %.2f pixels\n", maxWidth, wrapped.Width)
 	fmt.Printf("Single line height: %.2f pixels\n", singleLine.Height)
-	fmt.Printf("Wrapped height: %.2f pixels\n\n", wrapped.Height)
+	fmt.Printf("Wrapped height: %.2f pixels\n", wrapped.Height)
+	fmt.Println()
 
 	// Example 5: Style inheritance
 	fmt.Println("Example 5: Style Inheritance")
@@ -89,7 +96,8 @@ func RunDemo() {
 	
 	style := fm.GetTextStyleFromNode(em)
 	fmt.Printf("Node: <strong><em>text</em></strong>\n")
-	fmt.Printf("Inherited styles: Bold=%v, Italic=%v\n\n", style.Bold, style.Italic)
+	fmt.Printf("Inherited styles: Bold=%v, Italic=%v\n", style.Bold, style.Italic)
+	fmt.Println()
 
 	fmt.Println("Summary")
 	fmt.Println("-------")

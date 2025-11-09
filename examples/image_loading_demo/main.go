@@ -14,7 +14,7 @@ import (
 // This example demonstrates the image loading and caching capabilities
 func main() {
 	fmt.Println("Image Loading Demo")
-	fmt.Println("==================\n")
+	fmt.Println("==================")
 
 	// Create a temporary directory for test images
 	tmpDir, err := os.MkdirTemp("", "image-demo-*")
@@ -42,7 +42,7 @@ func main() {
 	// Example 2: Load an image synchronously
 	fmt.Println("Example 2: Loading Image Synchronously")
 	fmt.Println("---------------------------------------")
-	imageData, err := loader.LoadSync(testImagePath)
+	imageData, err := loader.Load(testImagePath)
 	if err != nil {
 		fmt.Printf("Error loading image: %v\n", err)
 	} else {
@@ -65,7 +65,7 @@ func main() {
 	// Example 4: Load from cache
 	fmt.Println("Example 4: Loading from Cache")
 	fmt.Println("------------------------------")
-	_, err = loader.LoadSync(testImagePath)
+	_, err = loader.Load(testImagePath)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 	} else {
@@ -76,7 +76,7 @@ func main() {
 	// Example 5: Error handling
 	fmt.Println("Example 5: Handling Missing Images")
 	fmt.Println("-----------------------------------")
-	missingData, err := loader.LoadSync("/nonexistent/image.png")
+	missingData, err := loader.Load("/nonexistent/image.png")
 	if err != nil {
 		fmt.Printf("Expected error: %v\n", err)
 		if missingData != nil && missingData.State == 2 { // StateError
@@ -97,7 +97,7 @@ func main() {
 			fmt.Printf("Failed to create image %d: %v\n", i, err)
 			continue
 		}
-		smallLoader.LoadSync(imagePath)
+		smallLoader.Load(imagePath)
 		fmt.Printf("Loaded image %d, cache size: %d\n", i, smallLoader.GetCache().Len())
 	}
 	fmt.Printf("\nFinal cache size (should be 2 due to eviction): %d\n", smallLoader.GetCache().Len())

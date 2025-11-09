@@ -13,9 +13,6 @@ import (
 	imageloader "github.com/vyquocvu/goosie/internal/image"
 )
 
-// NavigationCallback is called when a link is clicked
-type NavigationCallback func(url string)
-
 // Renderer is the main HTML renderer that coordinates parsing, layout, and rendering
 type Renderer struct {
 	layoutEngine   *LayoutEngine
@@ -28,7 +25,7 @@ type Renderer struct {
 	currentLayoutTree *LayoutBox
 
 	// Navigation callback for link clicks
-	onNavigate NavigationCallback
+	onNavigate func(url string)
 
 	// Current page URL for resolving relative links
 	currentURL string
@@ -190,13 +187,18 @@ func (r *Renderer) SetSize(width, height float32) {
 }
 
 // SetNavigationCallback sets the callback for link clicks
-func (r *Renderer) SetNavigationCallback(callback NavigationCallback) {
+func (r *Renderer) SetNavigationCallback(callback func(url string)) {
 	r.onNavigate = callback
 }
 
 // SetCurrentURL sets the current page URL for resolving relative links
 func (r *Renderer) SetCurrentURL(url string) {
 	r.currentURL = url
+}
+
+// ResolveURL resolves a relative or absolute URL against the current page URL
+func (r *Renderer) ResolveURL(href string) string {
+	return r.resolveURL(href)
 }
 
 // SetWindow sets the Fyne window for the renderer

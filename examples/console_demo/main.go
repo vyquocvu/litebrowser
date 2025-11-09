@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Enhanced Console Features Demo ===\n")
+	fmt.Println("=== Enhanced Console Features Demo ===")
 
 	// Create a new JavaScript runtime
 	runtime := js.NewRuntime()
