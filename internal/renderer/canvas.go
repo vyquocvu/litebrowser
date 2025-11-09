@@ -176,16 +176,12 @@ func (cr *CanvasRenderer) renderElementNode(node *RenderNode, objects *[]fyne.Ca
 		cr.renderTextarea(node, objects)
 	case "table":
 		cr.renderTable(node, objects)
-	case "tbody", "thead", "tfoot":
-		// Table section elements. Usually handled by renderTable when inside a <table>,
-		// but if encountered independently (edge case), render children as block elements.
-		for _, child := range node.Children {
-			cr.renderNode(child, objects)
-		}
-	case "tr":
-		// Table row. Usually handled by renderTable, but render children if standalone.
-	case "td", "th":
-		// Table cells. Usually handled by renderTable, but render children if standalone.
+	case "tbody", "thead", "tfoot", "tr", "td", "th":
+		// These elements are handled by the renderTable function.
+		// If they were rendered here, it would cause the cell contents to be
+		// duplicated and rendered as separate text blocks.
+		// By having these cases do nothing, we ensure that only the renderTable
+		// function handles the rendering of the table and its contents.
 	case "br":
 		// Add a spacer for line break
 		*objects = append(*objects, widget.NewLabel(""))
