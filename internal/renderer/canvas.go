@@ -11,6 +11,7 @@ import (
 	"fyne.io/fyne/v2/widget"
 
 	imageloader "github.com/vyquocvu/goosie/internal/image"
+	"github.com/vyquocvu/goosie/internal/ui"
 )
 
 // CanvasRenderer renders a render tree onto a Fyne canvas
@@ -33,7 +34,7 @@ type CanvasRenderer struct {
 	fontMetrics *FontMetrics
 
 	// Navigation callback for link clicks
-	onNavigate NavigationCallback
+	onNavigate ui.NavigationCallback
 
 	// Current page URL for resolving relative links
 	baseURL string
@@ -89,7 +90,7 @@ func (cr *CanvasRenderer) SetViewport(y, height float32) {
 }
 
 // SetNavigationCallback sets the navigation callback for link clicks
-func (cr *CanvasRenderer) SetNavigationCallback(callback NavigationCallback, baseURL string) {
+func (cr *CanvasRenderer) SetNavigationCallback(callback ui.NavigationCallback, baseURL string) {
 	cr.onNavigate = callback
 	cr.baseURL = baseURL
 }
@@ -139,13 +140,13 @@ func (cr *CanvasRenderer) renderTextNode(node *RenderNode, objects *[]fyne.Canva
 		return
 	}
 
-	// Create text widget
-	textWidget := widget.NewLabel(text)
-	textWidget.Wrapping = fyne.TextWrapWord
+	// Create selectable text widget
+	textWidget := ui.NewSelectableText(text)
+	textWidget.SetWrapping(fyne.TextWrapWord)
 
 	// Get text style from parent if available
 	if node.Parent != nil {
-		textWidget.TextStyle = cr.fontMetrics.GetTextStyle(node.Parent.TagName)
+		textWidget.SetTextStyle(cr.fontMetrics.GetTextStyle(node.Parent.TagName))
 	}
 
 	*objects = append(*objects, textWidget)
@@ -328,11 +329,11 @@ func (cr *CanvasRenderer) resolveURL(href string) string {
 type TappableHyperlink struct {
 	widget.Hyperlink
 	url        string
-	onNavigate NavigationCallback
+	onNavigate ui.NavigationCallback
 }
 
 // newTappableHyperlink creates a new tappable hyperlink
-func newTappableHyperlink(text, urlStr string, onNavigate NavigationCallback) *TappableHyperlink {
+func newTappableHyperlink(text, urlStr string, onNavigate ui.NavigationCallback) *TappableHyperlink {
 	parsedURL := urlParse(urlStr)
 	link := &TappableHyperlink{
 		url:        urlStr,
@@ -379,10 +380,10 @@ func (cr *CanvasRenderer) renderListItem(node *RenderNode, objects *[]fyne.Canva
 	}
 
 	// Add bullet point
-	label := widget.NewLabel("• " + text)
-	label.Wrapping = fyne.TextWrapWord
+	selectableText := ui.NewSelectableText("• " + text)
+	selectableText.SetWrapping(fyne.TextWrapWord)
 
-	*objects = append(*objects, label)
+	*objects = append(*objects, selectableText)
 }
 
 // renderCode renders code elements with monospace styling
@@ -392,11 +393,11 @@ func (cr *CanvasRenderer) renderCode(node *RenderNode, objects *[]fyne.CanvasObj
 		return
 	}
 
-	label := widget.NewLabel(text)
-	label.Wrapping = fyne.TextWrapWord
-	label.TextStyle = fyne.TextStyle{Monospace: true}
+	selectableText := ui.NewSelectableText(text)
+	selectableText.SetWrapping(fyne.TextWrapWord)
+	selectableText.SetTextStyle(fyne.TextStyle{Monospace: true})
 
-	*objects = append(*objects, label)
+	*objects = append(*objects, selectableText)
 }
 
 // renderPre renders pre elements with monospace styling and preserved whitespace
@@ -408,11 +409,11 @@ func (cr *CanvasRenderer) renderPre(node *RenderNode, objects *[]fyne.CanvasObje
 		return
 	}
 
-	label := widget.NewLabel(text)
-	label.Wrapping = fyne.TextWrapOff // Pre elements typically don't wrap
-	label.TextStyle = fyne.TextStyle{Monospace: true}
+	selectableText := ui.NewSelectableText(text)
+	selectableText.SetWrapping(fyne.TextWrapOff) // Pre elements typically don't wrap
+	selectableText.SetTextStyle(fyne.TextStyle{Monospace: true})
 
-	*objects = append(*objects, label)
+	*objects = append(*objects, selectableText)
 }
 
 // renderBlockquote renders blockquote elements
@@ -423,11 +424,11 @@ func (cr *CanvasRenderer) renderBlockquote(node *RenderNode, objects *[]fyne.Can
 	}
 
 	// Add visual indication of quote (e.g., with prefix)
-	label := widget.NewLabel("❝ " + text)
-	label.Wrapping = fyne.TextWrapWord
-	label.TextStyle = fyne.TextStyle{Italic: true}
+	selectableText := ui.NewSelectableText("❝ " + text)
+	selectableText.SetWrapping(fyne.TextWrapWord)
+	selectableText.SetTextStyle(fyne.TextStyle{Italic: true})
 
-	*objects = append(*objects, label)
+	*objects = append(*objects, selectableText)
 }
 
 // renderImage renders img elements
@@ -442,9 +443,9 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 			displayText += ": " + alt
 		}
 		displayText += "]"
-		label := widget.NewLabel(displayText)
-		label.Wrapping = fyne.TextWrapWord
-		*objects = append(*objects, label)
+		selectableText := ui.NewSelectableText(displayText)
+		selectableText.SetWrapping(fyne.TextWrapWord)
+		*objects = append(*objects, selectableText)
 		return
 	}
 
@@ -465,8 +466,8 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 
 				// Add alt text below the image if available
 				if hasAlt && alt != "" {
-					altLabel := widget.NewLabel(alt)
-					altLabel.Wrapping = fyne.TextWrapWord
+					altLabel := ui.NewSelectableText(alt)
+					altLabel.SetWrapping(fyne.TextWrapWord)
 					*objects = append(*objects, container.NewVBox(img, altLabel))
 				} else {
 					*objects = append(*objects, img)
@@ -480,9 +481,9 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 					displayText += ": " + alt
 				}
 				displayText += "]"
-				label := widget.NewLabel(displayText)
-				label.Wrapping = fyne.TextWrapWord
-				*objects = append(*objects, label)
+				selectableText := ui.NewSelectableText(displayText)
+				selectableText.SetWrapping(fyne.TextWrapWord)
+				*objects = append(*objects, selectableText)
 				return
 
 			case imageloader.StateLoading:
@@ -492,14 +493,14 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 					displayText += ": " + alt
 				}
 				displayText += "]"
-				label := widget.NewLabel(displayText)
-				label.Wrapping = fyne.TextWrapWord
+				selectableText := ui.NewSelectableText(displayText)
+				selectableText.SetWrapping(fyne.TextWrapWord)
 
 				// Show a gray rectangle as loading indicator
 				rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 				rect.SetMinSize(fyne.NewSize(100, 100))
 
-				*objects = append(*objects, container.NewVBox(rect, label))
+				*objects = append(*objects, container.NewVBox(rect, selectableText))
 				return
 			}
 		}
@@ -512,13 +513,12 @@ func (cr *CanvasRenderer) renderImage(node *RenderNode, objects *[]fyne.CanvasOb
 	}
 	displayText += "]"
 
-	label := widget.NewLabel(displayText)
-	label.Wrapping = fyne.TextWrapWord
+	selectableText := ui.NewSelectableText(displayText)
+	selectableText.SetWrapping(fyne.TextWrapWord)
 
 	rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 	rect.SetMinSize(fyne.NewSize(100, 100))
-
-	*objects = append(*objects, container.NewVBox(rect, label))
+	*objects = append(*objects, container.NewVBox(rect, selectableText))
 }
 
 // extractText extracts all text content from a node and its children
@@ -657,18 +657,18 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 			*objects = append(*objects, textObj)
 		} else {
 			// Use standard label widget
-			label := widget.NewLabel(cmd.Text)
-			label.Wrapping = fyne.TextWrapWord
+			selectableText := ui.NewSelectableText(cmd.Text)
+			selectableText.SetWrapping(fyne.TextWrapWord)
 
 			if cmd.Bold && cmd.Italic {
-				label.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
+				selectableText.TextStyle = fyne.TextStyle{Bold: true, Italic: true}
 			} else if cmd.Bold {
-				label.TextStyle = fyne.TextStyle{Bold: true}
+				selectableText.TextStyle = fyne.TextStyle{Bold: true}
 			} else if cmd.Italic {
-				label.TextStyle = fyne.TextStyle{Italic: true}
+				selectableText.TextStyle = fyne.TextStyle{Italic: true}
 			}
 
-			*objects = append(*objects, label)
+			*objects = append(*objects, selectableText)
 		}
 
 	case PaintRect:
@@ -691,9 +691,9 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 
 					// Add alt text below the image if available
 					if cmd.ImageAlt != "" {
-						altLabel := widget.NewLabel(cmd.ImageAlt)
-						altLabel.Wrapping = fyne.TextWrapWord
-						*objects = append(*objects, container.NewVBox(img, altLabel))
+						altSelectableText := ui.NewSelectableText(cmd.ImageAlt)
+						altSelectableText.SetWrapping(fyne.TextWrapWord)
+						*objects = append(*objects, container.NewVBox(img, altSelectableText))
 					} else {
 						*objects = append(*objects, img)
 					}
@@ -706,9 +706,9 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 						displayText += ": " + cmd.ImageAlt
 					}
 					displayText += "]"
-					label := widget.NewLabel(displayText)
-					label.Wrapping = fyne.TextWrapWord
-					*objects = append(*objects, label)
+					selectableText := ui.NewSelectableText(displayText)
+					selectableText.SetWrapping(fyne.TextWrapWord)
+					*objects = append(*objects, selectableText)
 					return
 
 				case imageloader.StateLoading:
@@ -718,13 +718,13 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 						displayText += ": " + cmd.ImageAlt
 					}
 					displayText += "]"
-					label := widget.NewLabel(displayText)
-					label.Wrapping = fyne.TextWrapWord
+					selectableText := ui.NewSelectableText(displayText)
+					selectableText.SetWrapping(fyne.TextWrapWord)
 
 					rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 					rect.SetMinSize(fyne.NewSize(100, 100))
 
-					*objects = append(*objects, container.NewVBox(rect, label))
+					*objects = append(*objects, container.NewVBox(rect, selectableText))
 					return
 				}
 			}
@@ -740,13 +740,13 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 		}
 		displayText += "]"
 
-		label := widget.NewLabel(displayText)
-		label.Wrapping = fyne.TextWrapWord
+		selectableText := ui.NewSelectableText(displayText)
+		selectableText.SetWrapping(fyne.TextWrapWord)
 
 		rect := canvas.NewRectangle(color.RGBA{R: 200, G: 200, B: 200, A: 255})
 		rect.SetMinSize(fyne.NewSize(100, 100))
 
-		*objects = append(*objects, container.NewVBox(rect, label))
+		*objects = append(*objects, container.NewVBox(rect, selectableText))
 
 	case PaintLink:
 		// Render clickable link
@@ -771,9 +771,9 @@ func (cr *CanvasRenderer) renderCommand(cmd *PaintCommand, objects *[]fyne.Canva
 				*objects = append(*objects, link)
 			} else {
 				// If URL parsing fails, display as text
-				label := widget.NewLabel(cmd.LinkText)
-				label.Wrapping = fyne.TextWrapWord
-				*objects = append(*objects, label)
+				selectableText := ui.NewSelectableText(cmd.LinkText)
+				selectableText.SetWrapping(fyne.TextWrapWord)
+				*objects = append(*objects, selectableText)
 			}
 		}
 	
@@ -919,19 +919,20 @@ func (cr *CanvasRenderer) hasCustomStyles(node *RenderNode) bool {
 // Note: canvas.Text objects don't support text wrapping, which is a known limitation.
 func (cr *CanvasRenderer) applyStylesToLabel(node *RenderNode, text string) fyne.CanvasObject {
 	if !cr.hasCustomStyles(node) {
-		// No custom styles, use standard label
-		label := widget.NewLabel(text)
-		label.Wrapping = fyne.TextWrapWord
+		// No custom styles, use selectable text widget
+		selectableText := ui.NewSelectableText(text)
+		selectableText.SetWrapping(fyne.TextWrapWord)
 		
 		// Apply tag-based styles (bold, italic, etc.)
 		if node.Parent != nil {
-			label.TextStyle = cr.fontMetrics.GetTextStyle(node.Parent.TagName)
+			selectableText.SetTextStyle(cr.fontMetrics.GetTextStyle(node.Parent.TagName))
 		}
 		
-		return label
+		return selectableText
 	}
 
-	// Create a styled canvas.Text object
+	// Create a styled canvas.Text object for custom colors/sizes
+	// Note: canvas.Text doesn't support selection, but we need it for custom colors
 	textObj := canvas.NewText(text, color.Black)
 	textObj.TextSize = cr.defaultSize
 	

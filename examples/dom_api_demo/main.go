@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	fmt.Println("=== Goosie DOM API Examples ===\n")
+	fmt.Println("=== Goosie DOM API Examples ===")
 	
 	// Create a new JavaScript runtime
 	runtime := js.NewRuntime()

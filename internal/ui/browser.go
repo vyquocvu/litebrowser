@@ -1,13 +1,13 @@
 package ui
 
 import (
-	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/dialog"
-	"fyne.io/fyne/v2/widget"
-	"github.com/vyquocvu/goosie/internal/js"
-	"github.com/vyquocvu/goosie/internal/renderer"
+    "fmt"
+    "fyne.io/fyne/v2"
+    "fyne.io/fyne/v2/app"
+    "fyne.io/fyne/v2/container"
+    "fyne.io/fyne/v2/dialog"
+    "fyne.io/fyne/v2/widget"
+    "github.com/vyquocvu/goosie/internal/js"
 )
 
 // fixedHeightLayout is a custom layout that sets a fixed height for a widget
@@ -58,6 +58,7 @@ type Browser struct {
 	consoleSplit        *container.Split
 	consoleVisible      bool
 	consoleContainer    *fyne.Container
+	RendererFactory     func() HTMLRenderer
 }
 
 // Tab represents a single browser tab
@@ -66,7 +67,7 @@ type Tab struct {
 	content       fyne.CanvasObject
 	contentBox    *widget.RichText
 	contentScroll *container.Scroll
-	htmlRenderer  *renderer.Renderer
+	htmlRenderer  HTMLRenderer
 	state         *BrowserState
 	browser       *Browser
 	jsRuntime     *js.Runtime
@@ -152,17 +153,21 @@ func (b *Browser) toggleConsole() {
 
 // newTabInternal creates a new tab without adding it to the tab container
 func (b *Browser) newTabInternal() *Tab {
-	contentBox := widget.NewRichTextFromMarkdown("Welcome to Goosie! Enter a URL above to start browsing.")
-	contentBox.Wrapping = fyne.TextWrapWord
-	contentScroll := container.NewScroll(contentBox)
-
-	htmlRenderer := renderer.NewRenderer(1000, 700)
-	htmlRenderer.SetWindow(b.window)
-	htmlRenderer.SetNavigationCallback(func(url string) {
-		if b.onNavigate != nil {
-			b.onNavigate(url)
-		}
-	})
+    contentBox := widget.NewRichTextFromMarkdown("Welcome to Goosie! Enter a URL above to start browsing.")
+    contentBox.Wrapping = fyne.TextWrapWord
+    contentScroll := container.NewScroll(contentBox)
+    var htmlRenderer HTMLRenderer
+    if b.RendererFactory != nil {
+        htmlRenderer = b.RendererFactory()
+        if htmlRenderer != nil {
+            htmlRenderer.SetWindow(b.window)
+            htmlRenderer.SetNavigationCallback(func(url string) {
+                if b.onNavigate != nil {
+                    b.onNavigate(url)
+                }
+            })
+        }
+    }
 
 	tabState := NewBrowserState()
 
@@ -212,13 +217,29 @@ func (b *Browser) SetHTMLContent(content string) {
 
 // RenderHTMLContent renders HTML content using the canvas-based renderer
 func (b *Browser) RenderHTMLContent(htmlContent string) error {
-	tab := b.ActiveTab()
-	if tab == nil {
-		return nil
-	}
-	// Set the current URL for resolving relative links
-	currentURL := tab.state.GetCurrentURL()
-	tab.htmlRenderer.SetCurrentURL(currentURL)
+    tab := b.ActiveTab()
+    if tab == nil {
+        return nil
+    }
+    // Lazily initialize the renderer if needed
+    if tab.htmlRenderer == nil {
+        if b.RendererFactory == nil {
+            return fmt.Errorf("RendererFactory is not set")
+        }
+        tab.htmlRenderer = b.RendererFactory()
+        if tab.htmlRenderer == nil {
+            return fmt.Errorf("RendererFactory returned nil renderer")
+        }
+        tab.htmlRenderer.SetWindow(b.window)
+        tab.htmlRenderer.SetNavigationCallback(func(url string) {
+            if b.onNavigate != nil {
+                b.onNavigate(url)
+            }
+        })
+    }
+    // Set the current URL for resolving relative links
+    currentURL := tab.state.GetCurrentURL()
+    tab.htmlRenderer.SetCurrentURL(currentURL)
 
 	canvasObject, err := tab.htmlRenderer.RenderHTML(htmlContent)
 	if err != nil {
@@ -352,6 +373,11 @@ func (t *Tab) GetJSRuntime() *js.Runtime {
 // SetJSRuntime sets the tab's JavaScript runtime
 func (t *Tab) SetJSRuntime(runtime *js.Runtime) {
 	t.jsRuntime = runtime
+}
+
+// GetRenderer returns the tab's HTML renderer
+func (t *Tab) GetRenderer() HTMLRenderer {
+	return t.htmlRenderer
 }
 
 // toggleBookmark adds or removes the current page from bookmarks

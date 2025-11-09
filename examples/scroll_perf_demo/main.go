@@ -17,7 +17,6 @@ func main() {
 	}
 
 	fmt.Println("=== Scroll Performance Test ===")
-	fmt.Println()
 
 	// Font metrics demo is available in a separate file
 
@@ -40,7 +39,6 @@ func main() {
 
 	// Simulate scrolling
 	fmt.Println("Simulating scroll performance...")
-	fmt.Println()
 
 	scrollPositions := []float32{0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000}
 	totalScrollTime := time.Duration(0)

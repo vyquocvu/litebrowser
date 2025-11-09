@@ -10,6 +10,7 @@ import (
 	"github.com/vyquocvu/goosie/internal/dom"
 	"github.com/vyquocvu/goosie/internal/js"
 	"github.com/vyquocvu/goosie/internal/net"
+	"github.com/vyquocvu/goosie/internal/renderer"
 	"github.com/vyquocvu/goosie/internal/ui"
 	"golang.org/x/net/html"
 )
@@ -19,6 +20,9 @@ func main() {
 	fetcher := net.NewFetcher()
 	parser := dom.NewParser()
 	browser := ui.NewBrowser()
+	browser.RendererFactory = func() ui.HTMLRenderer {
+		return renderer.NewRenderer(1000, 700)
+	}
 
 	// Create a cancellable context for page loads
 	var currentLoadCtx context.Context
@@ -60,8 +64,24 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 
 	// Launch background goroutine for fetch and render
 	go func() {
+		// Resolve URL if it's relative or needs resolution
+		resolvedURL := url
+		if activeTab := browser.ActiveTab(); activeTab != nil {
+			if renderer := activeTab.GetRenderer(); renderer != nil {
+				resolvedURL = renderer.ResolveURL(url)
+			}
+		}
+
+		// Handle anchor links (scroll within current page)
+		if strings.HasPrefix(url, "#") {
+			log.Printf("Anchor link detected: %s - scrolling within current page", url)
+			// For now, just hide loading and return (anchor scrolling can be implemented later)
+			browser.HideLoading()
+			return
+		}
+
 		// Fetch the page in background
-		html, err := fetcher.FetchWithContext(ctx, url, nil)
+		html, err := fetcher.FetchWithContext(ctx, resolvedURL, nil)
 
 		// Check if context was cancelled
 		if ctx.Err() != nil {
@@ -72,7 +92,7 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 		if err != nil {
 			// Fallback to mock HTML for example.com if network is unavailable
 			log.Printf("Network error (%v), checking if example.com for mock HTML", err)
-			if url == "https://example.com" {
+			if resolvedURL == "https://example.com" {
 				html = `<!DOCTYPE html>
 <html>
 <head>
@@ -88,13 +108,13 @@ func loadPageAsync(browser *ui.Browser, fetcher *net.Fetcher, parser *dom.Parser
 </html>`
 			} else {
 				// Update UI on main thread with error
-				updateUIWithError(browser, err, url)
+				updateUIWithError(browser, err, resolvedURL)
 				return
 			}
 		}
 
 		// Update UI on main thread with content
-		updateUIWithContent(browser, html, url)
+		updateUIWithContent(browser, html, resolvedURL)
 	}()
 }
 
